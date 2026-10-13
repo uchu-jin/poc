@@ -6,12 +6,12 @@
 
 ## ドキュメント
 
-| ファイル | 内容 |
-|---|---|
-| [docs/requirements/requirements.md](docs/requirements/requirements.md) | 要件定義書 v1.1 |
-| [docs/decisions.md](docs/decisions.md) | 決定ログ（v1.0 からの変更とその理由） |
-| [.claude/plans/plans.md](.claude/plans/plans.md) | 実装計画（設計、テスト、実装順） |
-| [CLAUDE.md](CLAUDE.md) | このフォルダで作業するときのルール |
+| ファイル                                                               | 内容                                  |
+| ---------------------------------------------------------------------- | ------------------------------------- |
+| [docs/requirements/requirements.md](docs/requirements/requirements.md) | 要件定義書 v1.1                       |
+| [docs/decisions.md](docs/decisions.md)                                 | 決定ログ（v1.0 からの変更とその理由） |
+| [.claude/plans/plans.md](.claude/plans/plans.md)                       | 実装計画（設計、テスト、実装順）      |
+| [CLAUDE.md](CLAUDE.md)                                                 | このフォルダで作業するときのルール    |
 
 ## 構成（予定）
 
@@ -21,7 +21,14 @@
 
 ## セットアップ
 
-T1（雛形づくり）で追記します。
+```bash
+npm install                              # 依存関係の導入（husky の hook も設定されます）
+cp .dev.vars.example .dev.vars           # ANTHROPIC_API_KEY などを記入（Git には含めません）
+npm run dev                              # Vite の開発サーバー（フロントエンドのみ）
+npm run dev:full                         # ビルド後に wrangler pages dev で Functions も起動（:8788）
+npx playwright install chromium webkit   # E2E 用ブラウザ（初回のみ）
+npm run e2e                              # E2E テスト
+```
 
 ## デプロイ
 

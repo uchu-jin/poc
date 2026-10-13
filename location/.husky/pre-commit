@@ -1,0 +1,5 @@
+git diff --cached --name-only | grep -q '^location/' || exit 0
+cd location
+npm run typecheck
+npx lint-staged
+npm run test -- --run

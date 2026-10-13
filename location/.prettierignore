@@ -1,0 +1,9 @@
+dist
+node_modules
+.wrangler
+playwright-report
+test-results
+package-lock.json
+src/data/*.json
+.claude/
+docs/
