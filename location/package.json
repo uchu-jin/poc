@@ -1,0 +1,44 @@
+{
+  "name": "michisugara",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:full": "npm run build && wrangler pages dev dist --port 8788",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p functions",
+    "lint": "eslint . && prettier --check .",
+    "test": "vitest",
+    "e2e": "playwright test",
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "prepare": "cd .. && husky location/.husky"
+  },
+  "lint-staged": {
+    "*.{ts,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,html,json,md}": "prettier --write"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/workers-types": "^5.20261013.1",
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.64.0",
+    "eslint": "^9.39.5",
+    "husky": "^9.1.7",
+    "jsdom": "^28.1.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
+    "wrangler": "^4.150.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "zod": "^4.6.7"
+  }
+}
