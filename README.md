@@ -5,7 +5,6 @@ Claude Code で POC をつくるためのリポジトリ。1つの POC = 直下�
 ```
 poc/
 ├── ai-dev-kickoff/   POC の土台をつくる Claude Code スキル
-├── location/         みちすがら（現在地 × 観光地 × 天気 × Claude との会話）
 └── <次の POC>/       ai-dev-kickoff でつくる
 ```
 
