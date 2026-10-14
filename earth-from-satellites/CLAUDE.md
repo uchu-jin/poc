@@ -8,25 +8,22 @@
 
 - TypeScript（strict）＋ Vite（UI フレームワークなし）、HTML / CSS（隣の `location/` と同じ構成）
 - サーバー：Cloudflare Pages Functions（最新画像の情報を返す `/api/latest`）。入力検証は zod
-- 品質：ESLint ＋ Prettier、husky ＋ lint-staged（pre-commit）
+- 品質：ESLint ＋ Prettier。pre-commit フックは未導入【要確認：リポジトリの core.hooksPath が location/ 専用のため。要件定義 §12 #12】
 - テスト：Vitest（単体、Functions）、Playwright（E2E）
-- 外部の画像配信元：公式配信を優先（GOES は NOAA STAR、ひまわりは NICT など）【要確認：具体的な URL と利用条件はプランで調べて決める】
+- 外部の画像配信元：撮影日時は CIRA SLIDER、画像は GOES＝NOAA STAR CDN／ひまわり＝CIRA SLIDER（いずれも GeoColor、キー不要）。詳細は .claude/plans/latest-image-api.md
+- 外部 API・Cloudflare は必ず無料の範囲で使う（Workers Free の上限：1日10万リクエスト、CPU 10ms、サブリクエスト50件。KV／R2／D1 などは使わない）
 
 ## よく使うコマンド
 
-【要確認：パッケージの初期化時に確定する。以下は location/ に揃えた仮置き】
-
-- 開発サーバー：`npm run dev`（Functions 込みは `npm run dev:full`）
+- 開発サーバー：`npm run dev`（Functions 込みは `npm run dev:full`、ポート 8789）
 - 単体テスト：`npx vitest run`
-- E2E：`npx playwright test <ファイル>`
+- E2E：`npx playwright test <ファイル>`（Playwright は画面のプランで導入する）
 - Lint：`npm run lint`、型検査：`npm run typecheck`
 
 ## ディレクトリ
 
-【要確認：初期化時に確定する。以下は仮置き】
-
 - `src/` ：画面と機能単位のコード（`src/features/<機能名>/`）。表示ロジックは DOM から切り離す
-- `functions/` ：Pages Functions（`api/latest.ts`、配信元ごとの取得処理は `_lib/` に閉じ込める）
+- `functions/` ：Pages Functions（`api/latest.ts`。許可リストは `_lib/satellites.ts`、配信元ごとの取得処理は `_lib/sources/`）
 - `tests/unit/`、`tests/functions/`、`e2e/` ：テスト
 - docs/requirements/ ：要件定義（FR-xxx / SC-xxx で参照する）
 - docs/rules/ ：判定基準となるルール（architecture / security / testing）
