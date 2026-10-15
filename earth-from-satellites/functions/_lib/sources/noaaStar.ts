@@ -4,8 +4,8 @@ import { SourceError, type LatestImage, type SourceDeps } from '../types';
 import { fetchCiraTimes } from './ciraTimes';
 
 export const STAR_HOST = 'cdn.star.nesdis.noaa.gov';
-const WIDTHS = [339, 678, 1808] as const;
 const PROBE_WIDTH = 678;
+const OTHER_WIDTHS = [339, 1808] as const;
 const MAX_PROBES = 3;
 
 const pad = (n: number, width: number) => String(n).padStart(width, '0');
@@ -30,11 +30,17 @@ export async function resolveNoaaStar(
   for (const time of times.slice(0, MAX_PROBES)) {
     const ts = toStarTimestamp(time);
     if (!(await headOk(starUrl(sat.starSat, ts, PROBE_WIDTH), deps))) continue;
+    // ほかのサイズは公開が遅れることがあるので、確かめられたものだけを返す
+    const published = await Promise.all(
+      OTHER_WIDTHS.map((width) => headOk(starUrl(sat.starSat, ts, width), deps)),
+    );
+    const widths: number[] = [PROBE_WIDTH, ...OTHER_WIDTHS.filter((_w, i) => published[i])];
+    widths.sort((a, b) => a - b);
     return {
       satelliteId: id,
       satelliteName: sat.name,
       capturedAt: time.toISOString(),
-      images: WIDTHS.map((width) => ({ url: starUrl(sat.starSat, ts, width), width })),
+      images: widths.map((width) => ({ url: starUrl(sat.starSat, ts, width), width })),
       credit: sat.credit,
     };
   }

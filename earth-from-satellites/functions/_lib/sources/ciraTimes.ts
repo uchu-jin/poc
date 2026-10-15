@@ -3,8 +3,12 @@ import { fetchJson } from '../fetchSource';
 import { SourceError, type SourceDeps } from '../types';
 
 export const CIRA_HOST = 'slider.cira.colostate.edu';
+export const MAX_FUTURE_SKEW_MS = 10 * 60 * 1000;
+const MAX_TIMESTAMPS = 1000;
 
-const latestTimesSchema = z.object({ timestamps_int: z.array(z.number()).min(1) });
+const latestTimesSchema = z.object({
+  timestamps_int: z.array(z.number()).min(1).max(MAX_TIMESTAMPS),
+});
 
 export function parseCiraTimestamp(value: number): Date | null {
   if (!Number.isSafeInteger(value)) return null;
@@ -37,10 +41,13 @@ export async function fetchCiraTimes(sliderSat: string, deps: SourceDeps): Promi
   const url = `https://${CIRA_HOST}/data/json/${sliderSat}/full_disk/geocolor/latest_times.json`;
   const parsed = latestTimesSchema.safeParse(await fetchJson(url, deps));
   if (!parsed.success) throw new SourceError('invalid', 'unexpected latest_times shape');
-  const times = parsed.data.timestamps_int
-    .map(parseCiraTimestamp)
-    .filter((d): d is Date => d !== null)
-    .sort((a, b) => b.getTime() - a.getTime());
+  const latestAllowed = deps.now.getTime() + MAX_FUTURE_SKEW_MS;
+  const unique = new Set<number>();
+  for (const value of parsed.data.timestamps_int) {
+    const ms = parseCiraTimestamp(value)?.getTime();
+    if (ms !== undefined && ms <= latestAllowed) unique.add(ms);
+  }
+  const times = [...unique].sort((a, b) => b - a).map((ms) => new Date(ms));
   if (times.length === 0) throw new SourceError('invalid', 'no valid timestamps');
   return times;
 }

@@ -24,7 +24,11 @@ const satelliteSchema = z.enum(SATELLITE_IDS);
 function json(status: number, body: unknown, cacheControl: string): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cacheControl },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': cacheControl,
+      'x-content-type-options': 'nosniff',
+    },
   });
 }
 
@@ -47,14 +51,16 @@ export async function handleLatest(request: Request, deps: LatestDeps): Promise<
   if (!id) return json(400, { code: 'invalid_satellite' }, 'no-store');
 
   const cacheKey = `https://cache.internal/api/latest?satellite=${id}`;
-  const cached = await deps.cache.match(cacheKey);
+  // キャッシュは補助なので、壊れていても配信元から取って返す
+  const cached = await deps.cache.match(cacheKey).catch(() => undefined);
   if (cached) return cached;
 
   try {
-    const image = await withTimeout((signal) => resolve(id, { fetch: deps.fetch, signal }));
-    validateLatestImage(image, deps.now());
+    const now = deps.now();
+    const image = await withTimeout((signal) => resolve(id, { fetch: deps.fetch, signal, now }));
+    validateLatestImage(image, now);
     const res = json(200, image, `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
-    await deps.cache.put(cacheKey, res.clone());
+    await deps.cache.put(cacheKey, res.clone()).catch(() => undefined);
     return res;
   } catch (e) {
     if (e instanceof SourceError && e.kind === 'timeout') {

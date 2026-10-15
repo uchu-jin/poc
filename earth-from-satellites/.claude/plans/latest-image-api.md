@@ -42,7 +42,7 @@
 - `functions/_lib/sources/ciraTimes.ts`：`fetchCiraTimes(sliderSat, deps)`。CIRA の `latest_times.json` を取得し、zod で `{ timestamps_int: number[] (1件以上) }` を検証して降順の時刻列を返す。純粋関数 `parseCiraTimestamp(20261014143020)` で UTC の Date に変換する（ひまわりと GOES で共通に使う）
 - `functions/_lib/sources/ciraSlider.ts`：`resolveCiraSlider(sat, deps)`（ひまわり）。先頭の時刻から 688px の画像 URL を組み立てる
 - `functions/_lib/sources/noaaStar.ts`：`resolveNoaaStar(sat, deps)`（GOES）。CIRA の時刻を、純粋関数 `toStarTimestamp(date)` で `YYYYDDDHHMM` に変換する。そのうえで 678px の画像に HEAD を送り、200 ならその時刻の3サイズの URL を返す。404 なら次の時刻を試し、最大3つまで（サブリクエストは計4回まで）。3つとも無ければ upstream エラーにする
-- `functions/_lib/fetchSource.ts`：`deps.fetch` に AbortSignal を付け、呼び出し全体で5秒でタイムアウトさせる。応答本文は 64KB を上限に読む（JSON は約2.4KB）。失敗は `SourceError('upstream' | 'timeout' | 'invalid')` にそろえる
+- `functions/_lib/fetchSource.ts`：`deps.fetch` に AbortSignal を付け、呼び出し全体で5秒でタイムアウトさせる。応答本文は 16KB を上限に読む（JSON は約2.4KB。レビュー後に 64KB から下げた）。失敗は `SourceError('upstream' | 'timeout' | 'invalid')` にそろえる
 - `functions/_lib/validate.ts`：返す前の検証
   - 画像 URL のホストは `cdn.star.nesdis.noaa.gov` / `slider.cira.colostate.edu` だけを許し、https に限る
   - 撮影日時は、`now + 10分` より未来なら invalid とする（時計は注入）。古いぶんには返す（「○分前」の判定は画面側の FR-007）
@@ -60,7 +60,7 @@
 - 画像本体は配信元を直接参照する（`<img>` が直接読む）。Functions で中継しない
 - 撮影日時は、3衛星とも CIRA の小さな JSON から取る。GOES の画像は、サイズが選べる STAR を使う。無料プランの CPU 上限とサブリクエスト上限に収めるため
 - 時刻の変換は純粋関数にして、テストで固定の JSON を与える
-- 【要確認】CIRA と STAR の時刻が分単位で一致することは、2026-10-14 の2回のサンプルでしか確かめていない。T5 の手動スモークで、もう一度確かめる。ずれる場合は HEAD による再試行（最大3つの時刻）で吸収する
+- CIRA と STAR の時刻が分単位で一致することは、T5 の手動スモーク（2026-10-14 15:50 UTC の回）でも確かめた。3衛星とも 200 を返し、返した画像 URL 7つはすべて 200。HEAD の再試行は起きなかった。ずれる場合は、HEAD による再試行（最大3つの時刻）で吸収する
 - 【要確認】利用条件：NOAA の画像は米国政府著作物だが、GeoColor は CIRA の製品。CIRA は「CSU/CIRA & NOAA」（ひまわりは「CSU/CIRA & JMA」）の表記を求めている（https://satlib.cira.colostate.edu/credit-media）。クレジットは仮に GOES＝`NOAA/NESDIS/STAR, CSU/CIRA`、ひまわり＝`CSU/CIRA & JMA` とする。外部サイトからの直接参照の可否は、公開前に作者が確認する
 - 【要確認】GOES-East/West の機体（現在は GOES-19 / GOES-18）が交代したら、`satellites.ts` の1か所を直す運用にする
 - 【要確認】pre-commit：リポジトリの `core.hooksPath` は `location/.husky/_` で、location 専用のフックになっている。ほかの POC のフォルダには触れないため、この POC の husky は今回入れない。共有フックをどう扱うかは作者が決める
@@ -79,7 +79,7 @@
 - `resolveCiraSlider`：先頭の時刻から、688px の URL と撮影日時を返す
 - `resolveNoaaStar`：先頭の時刻の HEAD が 200 なら3サイズを返す／先頭が 404 で2番目が 200 なら2番目を返す／3つとも 404 なら upstream／HEAD は最大3回で、4回目は呼ばない（サブリクエストは計4回以内）
 - `validate`：許可外ホスト・http の URL → invalid／撮影日時が now+10分ちょうどなら OK、+10分1秒なら invalid／幅 2000 は OK、2001 は invalid
-- `fetchSource`：5秒で 504 相当の timeout になる（タイマーはフェイク）／非2xx → upstream／本文が 64KB を超えたら invalid
+- `fetchSource`：5秒で 504 相当の timeout になる（タイマーはフェイク）／非2xx → upstream／本文が 16KB を超えたら invalid
 - `handleLatest`：
   - 3つの ID でそれぞれ 200 と期待する JSON を返す（FR-009）
   - 不正な ID・ID なし・`satellite=goes-east&satellite=x`・`https://evil` → 400 を返し、fetch が0回呼ばれる（FR-010）
@@ -115,3 +115,24 @@ E2E：画面がないため、このプランでは作らない（画面のプ�
 - 画像本体の中継・変換・リサイズ
 - NICT・JMA・Meteosat など、ほかの配信元への切り替えや予備の配信元
 - 有料の API・有料プランの機能（Cloudflare の Workers Paid、KV／R2／D1／Images など）
+
+## 付記：実装の記録
+
+### 実装時の判断（T1〜T5）
+
+- resolver の引数に衛星 ID を足した（`resolveCiraSlider(id, sat, deps)`）。返す `satelliteId` に要るため
+- `toCiraTimestamp` を足した（ひまわりの画像 URL を組み立てるため）
+- 配信元の振り分けは `functions/api/latest.ts` の `resolve()` に書いた。新しい種類の配信元を足すときは、ここも直す
+- エラー応答の code は、400＝`invalid_satellite`、502＝`upstream_error`、504＝`upstream_timeout`。画面はこの値に頼ってよい
+- 担当モデルの割り当ては使わず、すべて同じモデルで実装した
+
+### /review-impl の指摘への対応（2026-10-15、T6）
+
+- 配信元への問い合わせは `redirect: 'manual'` にした。GET の 3xx は upstream にする。HEAD の 3xx は「まだ無い」とみなす
+- HEAD の 403 も「まだ無い」とみなし、次の時刻を試す【要確認：STAR が未公開のファイルに 403 を返すかは未確認。返さないなら 404 だけに戻してよい】
+- 678px で公開を確かめた時刻について、339px・1808px も HEAD で確かめる。確かめられたサイズだけを返す（サブリクエストは最大 GET 1＋HEAD 3＋2＝6回）
+- タイムアウトは abort に加えて Promise.race で打ち切る。本文の読み込みが止まったときも 504 になる
+- キャッシュの読み出し・書き込みが失敗しても、配信元から取った結果を返す
+- CIRA の時刻一覧から、未来（now+10分より先）の時刻と重複を除く。件数の上限は1000件、本文の上限は 16KB
+- エラー応答の本文は読み捨てる。すべての応答に `X-Content-Type-Options: nosniff` を付ける
+- 見送った指摘（P2）：ブラウザ向けの max-age を短くすること（画面のプランで、更新周期とあわせて決める）、レート制限（無料の範囲では受け入れるリスク）、型違いの値が1件でもあれば一覧全体を invalid にする扱い（今のままにする）、ルートの tsconfig で tests を外していること（画面のプランで `tests/unit` を足すときに直す）

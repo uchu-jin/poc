@@ -200,3 +200,47 @@ describe('validateLatestImage', () => {
     expect(check({ capturedAt: 'yesterday' })).toThrow(expect.toSatisfy(isInvalid));
   });
 });
+
+describe('handleLatest：レビュー指摘への対応', () => {
+  it('キャッシュへの書き込みが失敗しても、200 で結果を返す', async () => {
+    const { deps } = setup();
+    deps.cache = {
+      match: async () => undefined,
+      put: async () => {
+        throw new Error('quota');
+      },
+    };
+    const res = await handleLatest(req('?satellite=himawari9'), deps);
+    expect(res.status).toBe(200);
+  });
+
+  it('キャッシュの読み出しが失敗しても、配信元に問い合わせて 200 を返す', async () => {
+    const { deps, calls } = setup();
+    deps.cache = {
+      match: async () => {
+        throw new Error('broken');
+      },
+      put: async () => {},
+    };
+    const res = await handleLatest(req('?satellite=himawari9'), deps);
+    expect(res.status).toBe(200);
+    expect(calls.length).toBeGreaterThan(0);
+  });
+
+  it('タイムアウトの 504 にも no-store が付く', async () => {
+    vi.useFakeTimers();
+    const { deps } = setup({ hang: true });
+    const p = handleLatest(req('?satellite=goes-east'), deps);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect((await p).headers.get('cache-control')).toBe('no-store');
+  });
+
+  it.each([
+    ['200', '?satellite=himawari9'],
+    ['400', '?satellite=bogus'],
+  ])('%s の応答に nosniff が付く', async (_label, qs) => {
+    const { deps } = setup();
+    const res = await handleLatest(req(qs), deps);
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+  });
+});

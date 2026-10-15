@@ -1,10 +1,9 @@
-import { CIRA_HOST } from './sources/ciraTimes';
+import { CIRA_HOST, MAX_FUTURE_SKEW_MS } from './sources/ciraTimes';
 import { STAR_HOST } from './sources/noaaStar';
 import { SourceError, type LatestImage } from './types';
 
 const ALLOWED_IMAGE_HOSTS: ReadonlySet<string> = new Set([STAR_HOST, CIRA_HOST]);
 export const MAX_IMAGE_WIDTH = 2000;
-const MAX_FUTURE_SKEW_MS = 10 * 60 * 1000;
 
 function isAllowedImageUrl(raw: string): boolean {
   try {

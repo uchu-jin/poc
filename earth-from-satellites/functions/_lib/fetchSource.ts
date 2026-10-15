@@ -1,26 +1,42 @@
 import { SourceError, type SourceDeps } from './types';
 
 export const SOURCE_TIMEOUT_MS = 5000;
-export const MAX_BODY_BYTES = 64 * 1024;
+export const MAX_BODY_BYTES = 16 * 1024;
 
 export async function withTimeout<T>(
   run: (signal: AbortSignal) => Promise<T>,
   ms: number = SOURCE_TIMEOUT_MS,
 ): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // abort を無視する処理（本文の読み込みが止まった場合など）でも、時間で打ち切る
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new SourceError('timeout'));
+    }, ms);
+  });
   try {
-    return await run(controller.signal);
+    return await Promise.race([run(controller.signal), timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
 async function send(url: string, method: string, deps: SourceDeps): Promise<Response> {
   try {
-    return await deps.fetch(url, { method, signal: deps.signal });
+    // リダイレクト先は許可リストの外かもしれないので追わない
+    return await deps.fetch(url, { method, signal: deps.signal, redirect: 'manual' });
   } catch {
     throw new SourceError(deps.signal.aborted ? 'timeout' : 'upstream');
+  }
+}
+
+async function discard(res: Response): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch {
+    // 読み捨てに失敗しても結果は変わらない
   }
 }
 
@@ -55,7 +71,10 @@ async function readLimited(res: Response, deps: SourceDeps): Promise<string> {
 
 export async function fetchJson(url: string, deps: SourceDeps): Promise<unknown> {
   const res = await send(url, 'GET', deps);
-  if (!res.ok) throw new SourceError('upstream', `status ${res.status}`);
+  if (!res.ok) {
+    await discard(res);
+    throw new SourceError('upstream', `status ${res.status}`);
+  }
   const text = await readLimited(res, deps);
   try {
     return JSON.parse(text) as unknown;
@@ -66,7 +85,11 @@ export async function fetchJson(url: string, deps: SourceDeps): Promise<unknown>
 
 export async function headOk(url: string, deps: SourceDeps): Promise<boolean> {
   const res = await send(url, 'HEAD', deps);
-  if (res.status === 404) return false;
-  if (!res.ok) throw new SourceError('upstream', `status ${res.status}`);
-  return true;
+  await discard(res);
+  if (res.ok) return true;
+  // 未公開のファイルに 403 を返す CDN もあるので、404・403・3xx は「まだ無い」とみなす
+  if (res.status === 404 || res.status === 403 || (res.status >= 300 && res.status < 400)) {
+    return false;
+  }
+  throw new SourceError('upstream', `status ${res.status}`);
 }

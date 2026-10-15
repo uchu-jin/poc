@@ -31,4 +31,5 @@ export class SourceError extends Error {
 export interface SourceDeps {
   fetch: typeof fetch;
   signal: AbortSignal;
+  now: Date;
 }
