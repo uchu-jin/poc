@@ -246,6 +246,13 @@ describe('view：地域・拡大・宇宙から', () => {
     expect(q('[data-role="note"]')?.hidden).toBe(true);
   });
 
+  it('EPIC は四角いまま、静止衛星は丸く切り抜いて見せる', () => {
+    renderWith(state({ satelliteId: 'epic', image: null, status: 'loading' }));
+    expect(q('figure')?.dataset.shape).toBe('square');
+    renderWith(state());
+    expect(q('figure')?.dataset.shape).toBe('disk');
+  });
+
   it('全体の表示なら picture を、地域ならタイルの層を表示する', () => {
     const tiles = {
       baseUrl:

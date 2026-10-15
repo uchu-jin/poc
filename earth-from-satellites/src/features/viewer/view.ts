@@ -172,6 +172,8 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
     render(state, now, timeZone, layout = DEFAULT_LAYOUT) {
       current = state;
       const traits = SOURCE_TRAITS[state.satelliteId];
+      // 宇宙の背景ごと見せる画像（EPIC）は、丸く切り抜かない
+      frame.dataset.shape = traits.hasRegions ? 'disk' : 'square';
       buttons.forEach((b, i) =>
         b.setAttribute('aria-pressed', String(SATELLITE_IDS[i] === state.satelliteId)),
       );
