@@ -1,29 +1,28 @@
 import type { SatelliteConfig, SatelliteId } from '../satellites';
-import type { LatestImage, SourceDeps } from '../types';
-import { CIRA_HOST, fetchCiraTimes, toCiraTimestamp } from './ciraTimes';
-
-const TILE_WIDTH = 688;
+import { SourceError, type LatestImage, type SourceDeps } from '../types';
+import { ciraImageryBase, ciraTiles } from './ciraTiles';
+import { fetchCiraTimes } from './ciraTimes';
 
 export async function resolveCiraSlider(
   id: SatelliteId,
   sat: SatelliteConfig,
   deps: SourceDeps,
 ): Promise<LatestImage> {
+  if (sat.source !== 'cira-slider') throw new SourceError('invalid', 'not a CIRA satellite');
   const [latest] = await fetchCiraTimes(sat.sliderSat, deps);
   // fetchCiraTimes は1件以上を保証する
   const capturedAt = latest as Date;
-  const ts = toCiraTimestamp(capturedAt);
-  const day = `${ts.slice(0, 4)}/${ts.slice(4, 6)}/${ts.slice(6, 8)}`;
   return {
     satelliteId: id,
     satelliteName: sat.name,
     capturedAt: capturedAt.toISOString(),
     images: [
       {
-        url: `https://${CIRA_HOST}/data/imagery/${day}/${sat.sliderSat}---full_disk/geocolor/${ts}/00/000_000.png`,
-        width: TILE_WIDTH,
+        url: `${ciraImageryBase(sat.sliderSat, capturedAt)}00/000_000.png`,
+        width: sat.tileSize,
       },
     ],
     credit: sat.credit,
+    tiles: ciraTiles(sat.sliderSat, capturedAt, sat.tileSize),
   };
 }

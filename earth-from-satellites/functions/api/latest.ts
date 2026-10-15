@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { withTimeout } from '../_lib/fetchSource';
 import { SATELLITE_IDS, SATELLITES, type SatelliteId } from '../_lib/satellites';
 import { resolveCiraSlider } from '../_lib/sources/ciraSlider';
+import { resolveNasaEpic } from '../_lib/sources/nasaEpic';
 import { resolveNoaaStar } from '../_lib/sources/noaaStar';
 import { SourceError, type LatestImage, type SourceDeps } from '../_lib/types';
 import { validateLatestImage } from '../_lib/validate';
@@ -41,9 +42,14 @@ function parseSatellite(request: Request): SatelliteId | null {
 
 function resolve(id: SatelliteId, deps: SourceDeps): Promise<LatestImage> {
   const sat = SATELLITES[id];
-  return sat.source === 'noaa-star'
-    ? resolveNoaaStar(id, sat, deps)
-    : resolveCiraSlider(id, sat, deps);
+  switch (sat.source) {
+    case 'noaa-star':
+      return resolveNoaaStar(id, sat, deps);
+    case 'cira-slider':
+      return resolveCiraSlider(id, sat, deps);
+    case 'nasa-epic':
+      return resolveNasaEpic(id, sat, deps);
+  }
 }
 
 export async function handleLatest(request: Request, deps: LatestDeps): Promise<Response> {

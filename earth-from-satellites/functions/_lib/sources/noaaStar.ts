@@ -1,6 +1,7 @@
 import { headOk } from '../fetchSource';
 import type { SatelliteConfig, SatelliteId } from '../satellites';
 import { SourceError, type LatestImage, type SourceDeps } from '../types';
+import { ciraTiles } from './ciraTiles';
 import { fetchCiraTimes } from './ciraTimes';
 
 export const STAR_HOST = 'cdn.star.nesdis.noaa.gov';
@@ -42,6 +43,7 @@ export async function resolveNoaaStar(
       capturedAt: time.toISOString(),
       images: widths.map((width) => ({ url: starUrl(sat.starSat, ts, width), width })),
       credit: sat.credit,
+      tiles: ciraTiles(sat.sliderSat, time, sat.tileSize),
     };
   }
   throw new SourceError('upstream', 'no published STAR image for recent timestamps');

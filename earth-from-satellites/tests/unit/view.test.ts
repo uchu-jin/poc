@@ -75,11 +75,21 @@ describe('view', () => {
     );
   });
 
-  it('ボタンは3つで、選択中だけ aria-pressed が true、押すと onSelect が呼ばれる', () => {
+  it('ボタンは4つで、選択中だけ aria-pressed が true、押すと onSelect が呼ばれる', () => {
     render(state());
     const buttons = [...root.querySelectorAll<HTMLButtonElement>('button[data-satellite]')];
-    expect(buttons.map((b) => b.textContent)).toEqual(['ひまわり9号', 'GOES-East', 'GOES-West']);
-    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      'ひまわり9号',
+      'GOES-East',
+      'GOES-West',
+      'DSCOVR（EPIC）',
+    ]);
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+      'false',
+      'false',
+    ]);
     buttons[2]?.click();
     expect(selected).toEqual(['goes-west']);
   });

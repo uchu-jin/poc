@@ -162,6 +162,12 @@ describe('resolveCiraSlider', () => {
         },
       ],
       credit: SATELLITES.himawari9.credit,
+      tiles: {
+        baseUrl:
+          'https://slider.cira.colostate.edu/data/imagery/2026/10/14/himawari---full_disk/geocolor/20261014141000/',
+        tileSize: 688,
+        maxZoom: 4,
+      },
     });
   });
 });

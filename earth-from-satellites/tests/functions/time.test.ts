@@ -42,8 +42,8 @@ describe('toStarTimestamp', () => {
 });
 
 describe('SATELLITES', () => {
-  it('許可リストは3衛星だけで、それぞれ表示名とクレジットを持つ', () => {
-    expect([...SATELLITE_IDS]).toEqual(['himawari9', 'goes-east', 'goes-west']);
+  it('許可リストは4つだけで、それぞれ表示名とクレジットを持つ', () => {
+    expect([...SATELLITE_IDS]).toEqual(['himawari9', 'goes-east', 'goes-west', 'epic']);
     for (const id of SATELLITE_IDS) {
       expect(SATELLITES[id].name.length).toBeGreaterThan(0);
       expect(SATELLITES[id].credit.text.length).toBeGreaterThan(0);

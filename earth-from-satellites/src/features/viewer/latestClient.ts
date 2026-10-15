@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   CREDIT_HOSTS,
-  IMAGE_HOSTS,
+  isAllowedImageUrl,
   MAX_IMAGE_WIDTH,
   type LatestImage,
   type SatelliteId,
@@ -22,21 +22,26 @@ function isHttpsOn(hosts: readonly string[], raw: string): boolean {
 const text = z.string().min(1).max(MAX_TEXT);
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
-const latestSchema = z.object({
-  satelliteId: text,
-  satelliteName: text,
-  capturedAt: text.refine((v) => ISO_DATETIME.test(v) && !Number.isNaN(Date.parse(v))),
-  images: z
-    .array(
-      z.object({
-        url: text.refine((v) => isHttpsOn(IMAGE_HOSTS, v)),
-        width: z.number().int().min(1).max(MAX_IMAGE_WIDTH),
-      }),
-    )
-    .min(1)
-    .max(5),
-  credit: z.object({ text, url: z.string().max(MAX_TEXT) }),
-}) satisfies z.ZodType<LatestImage>;
+const latestSchema = z
+  .object({
+    satelliteId: text,
+    satelliteName: text,
+    capturedAt: text.refine((v) => ISO_DATETIME.test(v) && !Number.isNaN(Date.parse(v))),
+    images: z
+      .array(
+        z.object({
+          url: text,
+          width: z.number().int().min(1).max(MAX_IMAGE_WIDTH),
+        }),
+      )
+      .min(1)
+      .max(5),
+    credit: z.object({ text, url: z.string().max(MAX_TEXT) }),
+  })
+  // 画像のホストは、衛星ごとの許可リストで確かめる
+  .refine((v) =>
+    v.images.every((i) => isAllowedImageUrl(v.satelliteId, i.url)),
+  ) satisfies z.ZodType<LatestImage>;
 
 export interface ViewerImage extends Omit<LatestImage, 'credit'> {
   credit: { text: string; linkUrl: string | null };

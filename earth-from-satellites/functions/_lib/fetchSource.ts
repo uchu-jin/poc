@@ -40,7 +40,7 @@ async function discard(res: Response): Promise<void> {
   }
 }
 
-async function readLimited(res: Response, deps: SourceDeps): Promise<string> {
+async function readLimited(res: Response, deps: SourceDeps, maxBytes: number): Promise<string> {
   if (!res.body) return '';
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -50,7 +50,7 @@ async function readLimited(res: Response, deps: SourceDeps): Promise<string> {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > MAX_BODY_BYTES) {
+      if (total > maxBytes) {
         await reader.cancel();
         throw new SourceError('invalid', 'body too large');
       }
@@ -69,13 +69,17 @@ async function readLimited(res: Response, deps: SourceDeps): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
-export async function fetchJson(url: string, deps: SourceDeps): Promise<unknown> {
+export async function fetchJson(
+  url: string,
+  deps: SourceDeps,
+  maxBytes: number = MAX_BODY_BYTES,
+): Promise<unknown> {
   const res = await send(url, 'GET', deps);
   if (!res.ok) {
     await discard(res);
     throw new SourceError('upstream', `status ${res.status}`);
   }
-  const text = await readLimited(res, deps);
+  const text = await readLimited(res, deps, maxBytes);
   try {
     return JSON.parse(text) as unknown;
   } catch {

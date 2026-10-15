@@ -5,12 +5,13 @@ import { formatCapturedAt } from '../../src/features/viewer/format';
 import { loadSatellite, saveSatellite } from '../../src/features/viewer/storage';
 
 describe('contract', () => {
-  it('衛星は3つで、すべてに表示名がある', () => {
-    expect([...SATELLITE_IDS]).toEqual(['himawari9', 'goes-east', 'goes-west']);
+  it('衛星は4つで、すべてに表示名がある', () => {
+    expect([...SATELLITE_IDS]).toEqual(['himawari9', 'goes-east', 'goes-west', 'epic']);
     expect(SATELLITE_NAMES).toEqual({
       himawari9: 'ひまわり9号',
       'goes-east': 'GOES-East',
       'goes-west': 'GOES-West',
+      epic: 'DSCOVR（EPIC）',
     });
   });
 });
