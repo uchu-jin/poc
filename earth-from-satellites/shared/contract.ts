@@ -39,6 +39,25 @@ export const CREDIT_HOSTS: readonly string[] = [
 ];
 export const MAX_IMAGE_WIDTH = 2000;
 
+export interface Geometry {
+  /** 衛星直下の経度（東経を正） */
+  subLon: number;
+  /** 全球画像の走査角の範囲（±rad） */
+  scanExtent: number;
+  /** 走査の軸（GOES は x、ひまわりなど CGMS の定義は y） */
+  sweep: 'x' | 'y';
+}
+
+export type GeostationaryId = Exclude<SatelliteId, 'epic'>;
+
+// 機体が交代したら、ここと functions/_lib/satellites.ts を直す
+// 【要確認】ひまわりの scanExtent は、CIRA の切り出し範囲を手動スモークで確かめる
+export const GEOSTATIONARY: Record<GeostationaryId, Geometry> = {
+  himawari9: { subLon: 140.7, scanExtent: 0.1518, sweep: 'y' },
+  'goes-east': { subLon: -75.2, scanExtent: 0.151844, sweep: 'x' },
+  'goes-west': { subLon: -137.2, scanExtent: 0.151844, sweep: 'x' },
+};
+
 export const MIN_TILE_SIZE = 600;
 export const MAX_TILE_SIZE = 700;
 export const MAX_ZOOM = 4;
