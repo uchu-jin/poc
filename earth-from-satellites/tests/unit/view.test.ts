@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createView } from '../../src/features/viewer/view';
 import type { ViewerImage } from '../../src/features/viewer/latestClient';
 import type { ViewerState } from '../../src/features/viewer/state';
+import { FULL_VIEW } from '../../src/features/viewer/viewport';
 
 const NOW = new Date('2026-10-14T15:00:00Z');
 
@@ -25,7 +26,15 @@ function image(over: Partial<ViewerImage> = {}): ViewerImage {
 }
 
 function state(over: Partial<ViewerState> = {}): ViewerState {
-  return { satelliteId: 'goes-east', image: image(), status: 'ok', requestId: 1, ...over };
+  return {
+    satelliteId: 'goes-east',
+    image: image(),
+    status: 'ok',
+    requestId: 1,
+    regionId: null,
+    viewport: FULL_VIEW,
+    ...over,
+  };
 }
 
 let root: HTMLElement;

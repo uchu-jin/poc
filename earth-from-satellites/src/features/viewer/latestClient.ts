@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  checkTiles,
   CREDIT_HOSTS,
   isAllowedImageUrl,
   MAX_IMAGE_WIDTH,
@@ -20,6 +21,11 @@ function isHttpsOn(hosts: readonly string[], raw: string): boolean {
 }
 
 const text = z.string().min(1).max(MAX_TEXT);
+
+function ciraStamp(iso: string): string | null {
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString().replace(/\D/g, '').slice(0, 14);
+}
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
 const latestSchema = z
@@ -37,10 +43,13 @@ const latestSchema = z
       .min(1)
       .max(5),
     credit: z.object({ text, url: z.string().max(MAX_TEXT) }),
+    tiles: z.object({ baseUrl: text, tileSize: z.number(), maxZoom: z.number() }).optional(),
   })
   // 画像のホストは、衛星ごとの許可リストで確かめる
-  .refine((v) =>
-    v.images.every((i) => isAllowedImageUrl(v.satelliteId, i.url)),
+  .refine((v) => v.images.every((i) => isAllowedImageUrl(v.satelliteId, i.url)))
+  // タイルは取り決めの形で、撮影時刻が capturedAt と一致すること（サーバーと同じ条件）
+  .refine(
+    (v) => !v.tiles || checkTiles(v.tiles) === ciraStamp(v.capturedAt),
   ) satisfies z.ZodType<LatestImage>;
 
 export interface ViewerImage extends Omit<LatestImage, 'credit'> {

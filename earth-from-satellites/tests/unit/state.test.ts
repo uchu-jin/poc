@@ -35,6 +35,8 @@ describe('state', () => {
       image: null,
       status: 'loading',
       requestId: 0,
+      regionId: null,
+      viewport: { cx: 0.5, cy: 0.5, zoom: 0 },
     });
   });
 
@@ -44,7 +46,14 @@ describe('state', () => {
 
   it('別の衛星を select すると画像が空になり loading に戻り requestId が進む', () => {
     const s = select(okState(), 'goes-east');
-    expect(s).toEqual({ satelliteId: 'goes-east', image: null, status: 'loading', requestId: 1 });
+    expect(s).toEqual({
+      satelliteId: 'goes-east',
+      image: null,
+      status: 'loading',
+      requestId: 1,
+      regionId: null,
+      viewport: { cx: 0.5, cy: 0.5, zoom: 0 },
+    });
   });
 
   it('同じ衛星を select しても何も変わらない', () => {
