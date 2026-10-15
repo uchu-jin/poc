@@ -26,11 +26,13 @@
 - `functions/` ：Pages Functions（`api/latest.ts`。許可リストは `_lib/satellites.ts`、配信元ごとの取得処理は `_lib/sources/`）
 - `tests/unit/`、`tests/functions/`、`e2e/` ：テスト
 - docs/requirements/ ：要件定義（FR-xxx / SC-xxx で参照する）
+- docs/workflow.md ：開発手順と機能ごとの進み具合
 - docs/rules/ ：判定基準となるルール（architecture / security / testing）
 - .claude/plans/ ：機能ごとのプラン（_template.md を複製して使う）
 
 ## 開発の進め方
 
+- 開発手順（8段階）と機能ごとの進み具合：docs/workflow.md。各コマンドの終わりに、その機能の行を更新する。段階を飛ばすときは理由を「メモ」に書く
 - 実装に入る前に、必ず .claude/plans/ にプランを作る（/plan）
 - プランは8項目で書く：概要／背景／詳細設計／テスト影響範囲／新規テストケース／実装順／コミット前テスト実行／スコープ外
 - 未確定の論点は【要確認】を付けて残し、推測で埋めない
