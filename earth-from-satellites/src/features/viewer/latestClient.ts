@@ -20,11 +20,12 @@ function isHttpsOn(hosts: readonly string[], raw: string): boolean {
 }
 
 const text = z.string().min(1).max(MAX_TEXT);
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
 const latestSchema = z.object({
   satelliteId: text,
   satelliteName: text,
-  capturedAt: text.refine((v) => !Number.isNaN(Date.parse(v))),
+  capturedAt: text.refine((v) => ISO_DATETIME.test(v) && !Number.isNaN(Date.parse(v))),
   images: z
     .array(
       z.object({

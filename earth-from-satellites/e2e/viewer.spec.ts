@@ -161,8 +161,10 @@ test('ひまわりの応答を待つ間に GOES-East を押すと、後から返
   await expect(status(page)).toHaveText('読み込み中…');
   await page.getByRole('button', { name: 'GOES-East' }).click();
   await expect(img(page)).toHaveAttribute('srcset', /GOES19/);
+  const late = page.waitForResponse('**/api/latest?satellite=himawari9');
   release();
-  await page.waitForTimeout(500);
+  await late;
+  await page.waitForTimeout(300);
   await expect(satName(page)).toHaveText('GOES-East');
   await expect(img(page)).toHaveAttribute('srcset', /GOES19/);
 });

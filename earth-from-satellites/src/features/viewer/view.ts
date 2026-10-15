@@ -34,8 +34,14 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+// 同じ値なら入れ直さない（フォーカスを保ち、読み上げソフトに同じ文を繰り返させない）
+function setText(node: Node, value: string) {
+  if (node.textContent !== value) node.textContent = value;
+}
+
 export function createView(root: HTMLElement, handlers: ViewHandlers): View {
   root.replaceChildren();
+  let creditKey = '';
 
   const group = el('div', { role: 'group', 'aria-label': MESSAGES.satelliteGroup, class: 'sats' });
   const buttons = SATELLITE_IDS.map((id) => {
@@ -70,15 +76,17 @@ export function createView(root: HTMLElement, handlers: ViewHandlers): View {
       );
 
       const image = state.image;
-      name.textContent = image ? image.satelliteName : SATELLITE_NAMES[state.satelliteId];
-      status.textContent =
+      setText(name, image ? image.satelliteName : SATELLITE_NAMES[state.satelliteId]);
+      setText(
+        status,
         state.status === 'loading'
           ? MESSAGES.loading
           : state.status === 'error'
             ? image
               ? MESSAGES.refreshFailed
               : MESSAGES.loadFailed
-            : '';
+            : '',
+      );
 
       picture.hidden = !image;
       time.hidden = !image;
@@ -93,6 +101,7 @@ export function createView(root: HTMLElement, handlers: ViewHandlers): View {
         stale.textContent = '';
         stale.hidden = true;
         credit.replaceChildren();
+        creditKey = '';
         return;
       }
 
@@ -103,12 +112,15 @@ export function createView(root: HTMLElement, handlers: ViewHandlers): View {
       img.setAttribute('alt', `${image.satelliteName} が撮影した地球`);
 
       time.setAttribute('datetime', image.capturedAt);
-      time.textContent = formatCapturedAt(image.capturedAt, timeZone);
+      setText(time, formatCapturedAt(image.capturedAt, timeZone));
 
       const minutes = staleMinutes(image.capturedAt, now);
-      stale.textContent = minutes === null ? '' : MESSAGES.stale(minutes);
+      setText(stale, minutes === null ? '' : MESSAGES.stale(minutes));
       stale.hidden = minutes === null;
 
+      const nextCreditKey = `${image.credit.text}\n${image.credit.linkUrl ?? ''}`;
+      if (nextCreditKey === creditKey) return;
+      creditKey = nextCreditKey;
       const label = document.createTextNode(MESSAGES.creditPrefix);
       if (image.credit.linkUrl) {
         const link = el('a', {

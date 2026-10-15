@@ -21,6 +21,8 @@ export interface SchedulerOptions {
 export interface Scheduler {
   start(): void;
   stop(): void;
+  /** すぐには呼ばず、この時点から周期を数え直す */
+  reset(): void;
 }
 
 export function createScheduler(opts: SchedulerOptions): Scheduler {
@@ -50,7 +52,8 @@ export function createScheduler(opts: SchedulerOptions): Scheduler {
     }
     if (timer !== null) return;
     const elapsed = lastTick === null ? Infinity : clock.now() - lastTick;
-    if (elapsed >= minGapMs) tick();
+    // 時計が戻った（elapsed が負）ときは、前回からの経過が分からないので、すぐ確かめる
+    if (elapsed < 0 || elapsed >= minGapMs) tick();
     else schedule(Math.max(0, intervalMs - elapsed));
   };
 
@@ -63,6 +66,11 @@ export function createScheduler(opts: SchedulerOptions): Scheduler {
       clear();
       unsubscribe?.();
       unsubscribe = null;
+    },
+    reset() {
+      lastTick = clock.now();
+      if (unsubscribe && visibility.isVisible()) schedule(intervalMs);
+      else clear();
     },
   };
 }

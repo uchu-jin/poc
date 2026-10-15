@@ -136,3 +136,14 @@ describe('view', () => {
     expect(q('[data-role="credit"]')?.textContent).toContain('CSU/CIRA & JMA');
   });
 });
+
+describe('view：再描画（レビュー指摘への対応）', () => {
+  it('同じ状態で2回描画しても、リンクと状態のメッセージを作り直さない', () => {
+    const view = render(state({ status: 'error' }));
+    const link = q('[data-role="credit"] a');
+    const textNode = q('[role="status"]')?.firstChild;
+    view.render(state({ status: 'error' }), new Date(NOW.getTime() + 60_000), 'Asia/Tokyo');
+    expect(q('[data-role="credit"] a')).toBe(link);
+    expect(q('[role="status"]')?.firstChild).toBe(textNode);
+  });
+});

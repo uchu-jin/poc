@@ -114,3 +114,25 @@ describe('fetchLatest', () => {
     expect(await p).toEqual({ ok: false });
   });
 });
+
+describe('fetchLatest：境界値（レビュー指摘への対応）', () => {
+  const star = (w: number) => ({ url: `https://cdn.star.nesdis.noaa.gov/a-${w}.jpg`, width: w });
+  it.each([
+    ['width が 2000（上限ちょうど）', { images: [star(2000)] }, true],
+    ['width が 1', { images: [star(1)] }, true],
+    ['width が 0', { images: [star(0)] }, false],
+    ['width が 678.5', { images: [{ ...star(678), width: 678.5 }] }, false],
+    ['images が5件', { images: [1, 2, 3, 4, 5].map((i) => star(i * 100)) }, true],
+    ['images が6件', { images: [1, 2, 3, 4, 5, 6].map((i) => star(i * 100)) }, false],
+    ['文字列が 2048 文字', { satelliteName: 'a'.repeat(2048) }, true],
+    ['文字列が 2049 文字', { satelliteName: 'a'.repeat(2049) }, false],
+    ['credit がない', { credit: undefined }, false],
+    ['credit.url が 2049 文字', { credit: { text: 'x', url: 'a'.repeat(2049) } }, false],
+    ['capturedAt が "2026"（ISO 8601 でない）', { capturedAt: '2026' }, false],
+    ['capturedAt が "Oct 14"', { capturedAt: 'Oct 14' }, false],
+    ['capturedAt がオフセット付きの ISO', { capturedAt: '2026-10-14T23:30:20+09:00' }, true],
+  ])('%s のとき ok は %s', async (_label, over, expected) => {
+    const { fn } = fetchReturning({ ...valid, ...over });
+    expect((await fetchLatest('goes-east', { fetch: fn })).ok).toBe(expected);
+  });
+});

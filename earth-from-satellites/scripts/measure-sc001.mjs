@@ -1,6 +1,7 @@
 // SC-001 の手動計測：4G 相当の回線（WebPageTest「4G」：下り 9Mbps・往復 170ms）で、
 // 初回の画像表示が終わるまでの時間を測る。実際の配信元を使うので、手動スモークでだけ実行する。
 // 使い方: node scripts/measure-sc001.mjs [URL] [回数]
+/* global document, HTMLImageElement -- page.evaluate の中はブラウザで動く */
 import { chromium, devices } from '@playwright/test';
 
 const url = process.argv[2] ?? 'http://localhost:8789/';
