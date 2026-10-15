@@ -64,6 +64,7 @@ h1 {
 
 .frame {
   position: relative;
+  user-select: none;
   margin: 0;
   aspect-ratio: 1;
   width: min(100%, 720px, calc(100dvh - 220px));
@@ -136,4 +137,73 @@ time {
 
 [hidden] {
   display: none !important;
+}
+
+.regions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.regions button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #2a3550;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.regions button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.tiles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  cursor: grab;
+}
+
+.tiles img {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+}
+
+.zoom {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+
+.zoom button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #2a3550;
+  border-radius: 8px;
+  background: rgb(17 23 38 / 85%);
+  color: var(--fg);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.status {
+  z-index: 2;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 0.8rem;
 }

@@ -44,6 +44,7 @@ function setup() {
   const apiQueue = new Map<string, Deferred<Response>[]>();
   const apiCalls: string[] = [];
   const preloads: { image: ViewerImage; d: Deferred<void> }[] = [];
+  const tilePreloads: { urls: string[]; d: Deferred<void> }[] = [];
   const store = new Map<string, string>();
   const fetchFn = (async (input: RequestInfo | URL) => {
     const sat = new URL(String(input), 'http://x').searchParams.get('satellite')!;
@@ -65,6 +66,12 @@ function setup() {
       preloads.push({ image, d });
       return d.promise;
     },
+    preloadUrls: (urls) => {
+      const d = deferred<void>();
+      tilePreloads.push({ urls, d });
+      return d.promise;
+    },
+    frame: () => ({ framePx: 600, dpr: 1 }),
     timeZone: 'UTC',
   });
   const respond = async (sat: string, payload: unknown, status = 200) => {
@@ -75,9 +82,9 @@ function setup() {
   const q = (sel: string) => root.querySelector<HTMLElement>(sel);
   const click = (name: string) =>
     [...root.querySelectorAll<HTMLButtonElement>('button')]
-      .find((b) => b.textContent === name)!
+      .find((b) => b.textContent === name || b.getAttribute('aria-label') === name)!
       .click();
-  return { root, c, v, apiCalls, preloads, respond, q, click, stop };
+  return { root, c, v, apiCalls, preloads, tilePreloads, respond, q, click, stop };
 }
 
 const statusText = (t: ReturnType<typeof setup>) => t.q('[role="status"]')?.textContent ?? '';
@@ -162,5 +169,153 @@ describe('app', () => {
     expect(t.apiCalls).toHaveLength(2);
     t.c.advance(9 * 60_000);
     expect(t.apiCalls).toEqual(['himawari9', 'goes-east', 'goes-east']);
+  });
+});
+
+const TILE_BASE = (ts: string) =>
+  `https://slider.cira.colostate.edu/data/imagery/2026/10/14/himawari---full_disk/geocolor/${ts}/`;
+
+function himawari(capturedAt: string, withTiles = true) {
+  const ts = capturedAt.replace(/\D/g, '').slice(0, 14);
+  return {
+    satelliteId: 'himawari9',
+    satelliteName: 'ひまわり9号',
+    capturedAt,
+    images: [{ url: `${TILE_BASE(ts)}00/000_000.png`, width: 688 }],
+    credit: { text: 'CSU/CIRA & JMA', url: 'https://satlib.cira.colostate.edu/credit-media' },
+    ...(withTiles ? { tiles: { baseUrl: TILE_BASE(ts), tileSize: 688, maxZoom: 4 } } : {}),
+  };
+}
+
+const T1 = '2026-10-14T14:00:00.000Z';
+const T2 = '2026-10-14T14:10:00.000Z';
+
+async function shownHimawari(t: ReturnType<typeof setup>) {
+  await t.respond('himawari9', himawari(T1));
+  t.preloads.at(-1)!.d.resolve();
+  await flush();
+}
+
+const pressed = (t: ReturnType<typeof setup>, sel: string) =>
+  [...t.root.querySelectorAll<HTMLButtonElement>(sel)]
+    .filter((b) => b.getAttribute('aria-pressed') === 'true')
+    .map((b) => b.textContent);
+const tileSrcs = (t: ReturnType<typeof setup>) =>
+  [...t.root.querySelectorAll<HTMLImageElement>('img[data-tile]')].map((i) =>
+    i.getAttribute('src'),
+  );
+
+describe('app：地域と拡大', () => {
+  it('地域を選んでも /api/latest を呼ばず、撮影日時の表示も変わらない。タイルを表示する', async () => {
+    t = setup();
+    await shownHimawari(t);
+    const time = t.q('time')?.textContent;
+    t.click('日本');
+    await flush();
+    expect(t.apiCalls).toEqual(['himawari9']);
+    expect(t.q('time')?.textContent).toBe(time);
+    expect(pressed(t, 'button[data-region]')).toEqual(['日本']);
+    expect(t.q('picture')?.hidden).toBe(true);
+    expect(tileSrcs(t).length).toBeGreaterThan(0);
+    expect(tileSrcs(t).every((u) => u!.startsWith(TILE_BASE('20261014140000')))).toBe(true);
+  });
+
+  it('「全球」で全体の表示に戻る', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('日本');
+    t.click('全球');
+    expect(t.q('picture')?.hidden).toBe(false);
+    expect(pressed(t, 'button[data-region]')).toEqual(['全球']);
+  });
+
+  it('衛星を切り替えると、全球に戻る', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('日本');
+    t.click('GOES-East');
+    expect(pressed(t, 'button[data-region]')).toEqual(['全球']);
+  });
+
+  it('拡大ボタンで拡大すると、地域の選択が外れてタイルを表示する', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('拡大');
+    expect(pressed(t, 'button[data-region]')).toEqual([]);
+    expect(t.q('picture')?.hidden).toBe(true);
+  });
+
+  it('タイル表示中の定期更新では、見えているタイルを先読みしてから入れ替え、地域を保つ', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('日本');
+    t.c.advance(10 * 60_000);
+    await t.respond('himawari9', himawari(T2));
+    expect(t.preloads).toHaveLength(1);
+    const pre = t.tilePreloads.at(-1)!;
+    expect(pre.urls.length).toBeGreaterThan(0);
+    expect(pre.urls.every((u) => u.startsWith(TILE_BASE('20261014141000')))).toBe(true);
+    expect(t.q('time')?.getAttribute('datetime')).toBe(T1);
+    pre.d.resolve();
+    await flush();
+    expect(t.q('time')?.getAttribute('datetime')).toBe(T2);
+    expect(pressed(t, 'button[data-region]')).toEqual(['日本']);
+  });
+
+  it('タイルの先読みに失敗したら、画像と地域を保ったまま「更新できませんでした」', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('日本');
+    t.c.advance(10 * 60_000);
+    await t.respond('himawari9', himawari(T2));
+    t.tilePreloads.at(-1)!.d.reject(new Error('404'));
+    await flush();
+    expect(statusText(t)).toContain('更新できませんでした');
+    expect(t.q('time')?.getAttribute('datetime')).toBe(T1);
+    expect(pressed(t, 'button[data-region]')).toEqual(['日本']);
+  });
+
+  it('定期更新で tiles がなくなったら、落ちずに全球の画像に戻る', async () => {
+    t = setup();
+    await shownHimawari(t);
+    t.click('日本');
+    t.c.advance(10 * 60_000);
+    await t.respond('himawari9', himawari(T2, false));
+    t.preloads.at(-1)?.d.resolve();
+    t.tilePreloads.at(-1)?.d.resolve();
+    await flush();
+    expect(t.q('picture')?.hidden).toBe(false);
+    expect(tileSrcs(t)).toHaveLength(0);
+  });
+});
+
+describe('app：宇宙から', () => {
+  const epic = (capturedAt: string) => ({
+    satelliteId: 'epic',
+    satelliteName: 'DSCOVR（EPIC）',
+    capturedAt,
+    images: [
+      {
+        url: `https://epic.gsfc.nasa.gov/archive/natural/2026/10/13/jpg/epic_1b_${capturedAt.replace(/\D/g, '').slice(0, 14)}.jpg`,
+        width: 1080,
+      },
+    ],
+    credit: { text: 'NASA EPIC Team', url: 'https://epic.gsfc.nasa.gov/' },
+  });
+
+  it('更新に失敗したら画像を残して「更新できませんでした」、次に成功したら消える', async () => {
+    t = setup();
+    t.click('宇宙から');
+    await t.respond('epic', epic('2026-10-13T22:00:00.000Z'));
+    t.preloads.at(-1)!.d.resolve();
+    await flush();
+    expect(t.q('[data-role="note"]')?.textContent).toBe('公開まで1〜2日かかります');
+    t.c.advance(10 * 60_000);
+    await t.respond('epic', { code: 'upstream_error' }, 502);
+    expect(statusText(t)).toContain('更新できませんでした');
+    expect(t.q('picture')?.hidden).toBe(false);
+    t.c.advance(10 * 60_000);
+    await t.respond('epic', epic('2026-10-13T22:00:00.000Z'));
+    expect(statusText(t)).toBe('');
   });
 });

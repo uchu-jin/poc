@@ -1,6 +1,13 @@
 import type { ViewerImage } from './latestClient';
 import type { Clock, Visibility } from './scheduler';
-import { buildSrcset, DESKTOP_SIZES, MOBILE_MAX_WIDTH, MOBILE_MEDIA, MOBILE_SIZES } from './view';
+import {
+  buildSrcset,
+  DESKTOP_SIZES,
+  MOBILE_MAX_WIDTH,
+  MOBILE_MEDIA,
+  MOBILE_SIZES,
+  type Layout,
+} from './view';
 
 export const browserClock: Clock = {
   now: () => Date.now(),
@@ -25,4 +32,19 @@ export async function preloadImage(image: ViewerImage): Promise<void> {
     ? buildSrcset(image, MOBILE_MAX_WIDTH) || buildSrcset(image)
     : buildSrcset(image);
   await img.decode();
+}
+
+export async function preloadUrls(urls: string[]): Promise<void> {
+  await Promise.all(
+    urls.map((url) => {
+      const img = new Image();
+      img.src = url;
+      return img.decode();
+    }),
+  );
+}
+
+export function frameLayout(): Layout {
+  const frame = document.querySelector<HTMLElement>('.frame');
+  return { framePx: frame?.clientWidth || 600, dpr: window.devicePixelRatio || 1 };
 }
