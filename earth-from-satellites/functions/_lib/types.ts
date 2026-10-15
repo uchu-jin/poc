@@ -1,20 +1,4 @@
-export interface ImageVariant {
-  url: string;
-  width: number;
-}
-
-export interface Credit {
-  text: string;
-  url: string;
-}
-
-export interface LatestImage {
-  satelliteId: string;
-  satelliteName: string;
-  capturedAt: string;
-  images: ImageVariant[];
-  credit: Credit;
-}
+export type { Credit, ImageVariant, LatestImage } from '../../shared/contract';
 
 export type SourceErrorKind = 'upstream' | 'timeout' | 'invalid';
 
