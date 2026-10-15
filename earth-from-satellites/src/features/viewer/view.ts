@@ -2,6 +2,7 @@ import {
   SATELLITE_IDS,
   SATELLITE_LABELS,
   SATELLITE_NAMES,
+  type GeostationaryId,
   type SatelliteId,
 } from '../../../shared/contract';
 import { formatCapturedAt } from './format';
@@ -57,6 +58,12 @@ export function underlayUrl(image: ViewerImage): string {
   return smallest ? new URL(smallest.url).href : '';
 }
 
+/** 地域の選択と拡大ができるか。読み込み中は衛星の性質で、読み込んだあとは tiles の有無で決める */
+export function canExplore(state: ViewerState): boolean {
+  if (!SOURCE_TRAITS[state.satelliteId].hasRegions) return false;
+  return state.image === null || Boolean(state.image.tiles);
+}
+
 /** タイルを表示するか（全体表示でなく、タイルの情報があるとき） */
 export function showsTiles(state: ViewerState): boolean {
   return Boolean(state.image?.tiles) && !isFull(state.viewport);
@@ -93,6 +100,7 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
   let creditKey = '';
   let regionsFor: SatelliteId | null = null;
   let current: ViewerState | null = null;
+  let lastSatellite: SatelliteId | null = null;
 
   const group = el('div', { role: 'group', 'aria-label': MESSAGES.satelliteGroup, class: 'sats' });
   const buttons = SATELLITE_IDS.map((id) => {
@@ -140,7 +148,7 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
       return { left: r.left, top: r.top, width: r.width || 1 };
     },
     onChange: (vp) => handlers.onViewportChange?.(vp),
-    isEnabled: () => Boolean(current && SOURCE_TRAITS[current.satelliteId].hasRegions),
+    isEnabled: () => Boolean(current && canExplore(current)),
   });
 
   const meta = el('div', { class: 'meta' });
@@ -155,7 +163,9 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
 
   function buildRegions(id: SatelliteId) {
     regionsFor = id;
-    const list: readonly Region[] = id === 'epic' ? [] : REGIONS[id];
+    const list: readonly Region[] = SOURCE_TRAITS[id].hasRegions
+      ? REGIONS[id as GeostationaryId]
+      : [];
     const full = el('button', { type: 'button', 'data-region': '' });
     full.textContent = MESSAGES.fullDisk;
     full.addEventListener('click', () => handlers.onRegion?.(null));
@@ -178,9 +188,14 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
         b.setAttribute('aria-pressed', String(SATELLITE_IDS[i] === state.satelliteId)),
       );
 
+      if (lastSatellite !== state.satelliteId) {
+        // 前の衛星で始めたドラッグを、切り替え先に持ち込まない
+        gestures.cancel();
+        lastSatellite = state.satelliteId;
+      }
       if (regionsFor !== state.satelliteId) buildRegions(state.satelliteId);
-      regions.hidden = !traits.hasRegions;
-      zoom.hidden = !traits.hasRegions;
+      regions.hidden = !canExplore(state);
+      zoom.hidden = !canExplore(state);
       for (const b of regions.querySelectorAll<HTMLButtonElement>('button[data-region]')) {
         const id = b.dataset.region || null;
         const on =

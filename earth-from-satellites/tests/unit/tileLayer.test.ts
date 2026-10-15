@@ -21,12 +21,15 @@ interface Deferred {
 function setup() {
   const c = fakeClock();
   const loads = new Map<string, Deferred>();
+  const loadCalls: string[] = [];
   const layer = createTileLayer({
     clock: c.clock,
-    load: (url) =>
-      new Promise<void>((resolve, reject) => {
+    load: (url) => {
+      loadCalls.push(url);
+      return new Promise<void>((resolve, reject) => {
         loads.set(url, { resolve, reject: () => reject(new Error('404')) });
-      }),
+      });
+    },
   });
   document.body.replaceChildren(layer.element);
   const imgs = () => [...layer.element.querySelectorAll<HTMLImageElement>('img[data-tile]')];
@@ -35,7 +38,7 @@ function setup() {
   const flush = async () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
   };
-  return { c, loads, layer, imgs, srcOf, flush };
+  return { c, loads, loadCalls, layer, imgs, srcOf, flush };
 }
 
 const draw = (
@@ -141,5 +144,29 @@ describe('tileLayer', () => {
     draw(t);
     t.layer.render(null);
     expect(t.imgs()).toHaveLength(0);
+  });
+});
+
+describe('tileLayer：レビュー指摘への対応', () => {
+  it('世代が替わったあと同じ入力で何度描画しても、タイルごとの読み込みは1回', () => {
+    draw(t);
+    const spots = visibleTiles(600, VP, 688, 4, 1);
+    for (let i = 0; i < 10; i++) draw(t, { tiles: tiles(B) });
+    expect(t.loadCalls).toHaveLength(spots.length);
+    expect(new Set(t.loadCalls).size).toBe(spots.length);
+  });
+
+  it('新しい世代で失敗したタイルは、次の baseUrl まで読み直さない', async () => {
+    draw(t);
+    const spots = visibleTiles(600, VP, 688, 4, 1);
+    draw(t, { tiles: tiles(B) });
+    for (const s of spots) t.loads.get(tileUrl(B, s.z, s.row, s.col))!.reject();
+    await t.flush();
+    draw(t, { tiles: tiles(B) });
+    draw(t, { tiles: tiles(B) });
+    expect(t.loadCalls).toHaveLength(spots.length);
+    const C = base('20261014112000');
+    draw(t, { tiles: tiles(C) });
+    expect(t.loadCalls).toHaveLength(spots.length * 2);
   });
 });

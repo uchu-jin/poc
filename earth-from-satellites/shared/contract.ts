@@ -1,4 +1,4 @@
-// 画面とサーバーの両方が参照する取り決め。純粋な定数と型だけを置く
+// 画面とサーバーの両方が参照する取り決め。純粋な定数・型と、副作用のない検証・組み立ての関数だけを置く
 
 export const SATELLITE_IDS = ['himawari9', 'goes-east', 'goes-west', 'epic'] as const;
 export type SatelliteId = (typeof SATELLITE_IDS)[number];

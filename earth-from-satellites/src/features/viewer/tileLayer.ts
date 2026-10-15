@@ -32,6 +32,10 @@ interface Entry {
   row: number;
   col: number;
   url: string;
+  /** 読み込み中の新しい世代の URL（同じものを何度も要求しないため） */
+  pending?: string;
+  /** 失敗した URL。次の baseUrl まで読み直さない */
+  failed?: string;
 }
 
 function place(img: HTMLImageElement, left: number, top: number, size: number) {
@@ -126,16 +130,21 @@ export function createTileLayer(deps: TileLayerDeps): TileLayer {
         img.setAttribute('src', url);
         element.append(img);
         entries.set(key, { img, z: s.z, row: s.row, col: s.col, url });
-      } else if (existing.url !== url) {
+      } else if (existing.url !== url && existing.pending !== url && existing.failed !== url) {
         // 新しい撮影時刻：読み込めたものから入れ替え、失敗したら前の画像を残す
+        existing.pending = url;
         deps.load(url).then(
           () => {
+            if (existing.pending === url) existing.pending = undefined;
             if (baseUrl !== generation || entries.get(key) !== existing) return;
             existing.img.setAttribute('src', url);
             existing.img.hidden = false;
             existing.url = url;
           },
-          () => undefined,
+          () => {
+            if (existing.pending === url) existing.pending = undefined;
+            existing.failed = url;
+          },
         );
       }
     }

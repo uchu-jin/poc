@@ -65,6 +65,10 @@ export async function resolveNasaEpic(
 
   // アーカイブは画像名の日付で並ぶ（date と数十秒ずれ、日をまたぐことがある）
   const stamp = best.image.slice('epic_1b_'.length);
+  const stampDate = parseEpicDate(
+    `${stamp.slice(0, 4)}-${stamp.slice(4, 6)}-${stamp.slice(6, 8)} ${stamp.slice(8, 10)}:${stamp.slice(10, 12)}:${stamp.slice(12, 14)}`,
+  );
+  if (!stampDate) throw new SourceError('invalid', 'unreadable EPIC image name');
   const day = `${stamp.slice(0, 4)}/${stamp.slice(4, 6)}/${stamp.slice(6, 8)}`;
   return {
     satelliteId: id,

@@ -11,6 +11,8 @@ export interface GestureOptions {
 export interface Gestures {
   /** 表示範囲が外から変わったときに、touch-action を合わせる */
   sync(): void;
+  /** 進行中のドラッグ・ピンチをやめる（衛星の切り替えなど） */
+  cancel(): void;
   detach(): void;
 }
 
@@ -50,15 +52,31 @@ export function attachGestures(el: HTMLElement, opts: GestureOptions): Gestures 
     }
   };
 
+  // ＋／−などのボタンの上の操作は、ボタンに任せる
+  const onButton = (e: Event) => e.target instanceof Element && e.target.closest('button') !== null;
+  const isMouse = (p: PointerEvent) => p.pointerType !== 'touch' && p.pointerType !== 'pen';
+
   const onDown = (e: Event) => {
     const p = e as PointerEvent;
-    if (!enabled()) return;
+    if (!enabled() || onButton(e)) return;
+    if (isMouse(p) && p.button !== 0) return;
     pointers.set(p.pointerId, { x: p.clientX, y: p.clientY });
+    try {
+      el.setPointerCapture?.(p.pointerId);
+    } catch {
+      // 捕捉できなくても、buttons の確認で後片付けできる
+    }
     restart();
   };
   const onMove = (e: Event) => {
     const p = e as PointerEvent;
     if (!pointers.has(p.pointerId)) return;
+    // 枠の外でボタンを離した（pointerup が届かなかった）
+    if (isMouse(p) && p.buttons === 0) {
+      pointers.delete(p.pointerId);
+      restart();
+      return;
+    }
     pointers.set(p.pointerId, { x: p.clientX, y: p.clientY });
     if (pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()] as [{ x: number; y: number }, { x: number; y: number }];
@@ -77,7 +95,7 @@ export function attachGestures(el: HTMLElement, opts: GestureOptions): Gestures 
     restart();
   };
   const onDblClick = (e: Event) => {
-    if (!enabled()) return;
+    if (!enabled() || onButton(e)) return;
     const m = e as MouseEvent;
     change(zoomAt(opts.getViewport(), 1, focusOf(m.clientX, m.clientY)));
   };
@@ -101,6 +119,11 @@ export function attachGestures(el: HTMLElement, opts: GestureOptions): Gestures 
 
   return {
     sync,
+    cancel() {
+      pointers.clear();
+      drag = null;
+      pinch = null;
+    },
     detach() {
       el.removeEventListener('pointerdown', onDown);
       el.removeEventListener('pointermove', onMove);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SATELLITE_IDS, SATELLITE_NAMES } from '../../shared/contract';
-import { staleMinutes } from '../../src/features/viewer/freshness';
+import { staleNotice } from '../../src/features/viewer/freshness';
+import { SOURCE_TRAITS } from '../../src/features/viewer/sources';
 import { formatCapturedAt } from '../../src/features/viewer/format';
 import { loadSatellite, saveSatellite } from '../../src/features/viewer/storage';
 
@@ -16,16 +17,16 @@ describe('contract', () => {
   });
 });
 
-describe('staleMinutes', () => {
+describe('staleNotice（静止衛星）', () => {
   const now = new Date('2026-10-14T16:00:00Z');
   it.each([
     ['59分59秒前', '2026-10-14T15:00:01Z', null],
-    ['ちょうど60分前', '2026-10-14T15:00:00Z', 60],
-    ['61分30秒前', '2026-10-14T14:58:30Z', 61],
+    ['ちょうど60分前', '2026-10-14T15:00:00Z', '60分前の画像です'],
+    ['61分30秒前', '2026-10-14T14:58:30Z', '61分前の画像です'],
     ['未来', '2026-10-14T16:05:00Z', null],
     ['読めない値', 'not-a-date', null],
   ])('%s のとき %s', (_label, iso, expected) => {
-    expect(staleMinutes(iso, now)).toBe(expected);
+    expect(staleNotice(iso, now, SOURCE_TRAITS.himawari9.stale)).toBe(expected);
   });
 });
 

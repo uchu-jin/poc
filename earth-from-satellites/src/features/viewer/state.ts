@@ -1,6 +1,7 @@
 import { GEOSTATIONARY, type SatelliteId } from '../../../shared/contract';
 import type { ViewerImage } from './latestClient';
 import { REGIONS } from './regions';
+import { SOURCE_TRAITS } from './sources';
 import { FULL_VIEW, regionView, type Viewport } from './viewport';
 
 export interface ViewerState {
@@ -38,15 +39,12 @@ export function select(state: ViewerState, satelliteId: SatelliteId): ViewerStat
 
 /** null なら全体に戻す（選択中でも、押せば戻す） */
 export function selectRegion(state: ViewerState, regionId: string | null): ViewerState {
-  if (state.satelliteId === 'epic') return state;
+  const id = state.satelliteId;
+  if (!SOURCE_TRAITS[id].hasRegions || id === 'epic') return state;
   if (regionId === null) return { ...state, regionId: null, viewport: FULL_VIEW };
-  const region = REGIONS[state.satelliteId].find((r) => r.id === regionId);
+  const region = REGIONS[id].find((r) => r.id === regionId);
   if (!region) return state;
-  return {
-    ...state,
-    regionId,
-    viewport: regionView(region, GEOSTATIONARY[state.satelliteId]),
-  };
+  return { ...state, regionId, viewport: regionView(region, GEOSTATIONARY[id]) };
 }
 
 /** 利用者が動かした。地域の選択は外す */

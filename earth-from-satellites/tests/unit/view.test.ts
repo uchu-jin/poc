@@ -278,6 +278,12 @@ describe('view：地域・拡大・宇宙から', () => {
     expect(root.querySelectorAll('img[data-tile]').length).toBeGreaterThan(0);
   });
 
+  it('tiles がない応答では、地域の選択と拡大・縮小のボタンを隠す', () => {
+    renderWith(state({ satelliteId: 'himawari9' }));
+    expect(regionLabels()).toEqual([]);
+    expect(zoomButtonsShown()).toBe(0);
+  });
+
   it('拡大していても tiles がない応答なら、picture を表示する', () => {
     renderWith(state({ viewport: { cx: 0.4, cy: 0.4, zoom: 1 } }));
     expect(q('picture')?.hidden).toBe(false);
