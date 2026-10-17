@@ -1,10 +1,11 @@
+import { HOSTS } from '../../../shared/contract';
 import { headOk } from '../fetchSource';
 import type { SatelliteConfig, SatelliteId } from '../satellites';
 import { SourceError, type LatestImage, type SourceDeps } from '../types';
 import { ciraTiles } from './ciraTiles';
 import { fetchCiraTimes } from './ciraTimes';
 
-export const STAR_HOST = 'cdn.star.nesdis.noaa.gov';
+export const STAR_HOST = HOSTS.star;
 const PROBE_WIDTH = 678;
 const OTHER_WIDTHS = [339, 1808] as const;
 const MAX_PROBES = 3;

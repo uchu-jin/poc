@@ -265,3 +265,22 @@ test.describe('画像サイズ（FR-008）', () => {
     await expect.poll(() => mock.imageCalls.some((u) => u.includes('1808x1808'))).toBe(true);
   });
 });
+
+test('スマホ幅（375px）でも、衛星のボタンの文字は1行に収まる', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
+  const page = await context.newPage();
+  await setup(page, (sat) => ok(sat));
+  await page.goto('/');
+  const lines = await page.locator('.sats button').evaluateAll((buttons) =>
+    buttons.map((b) => {
+      const range = document.createRange();
+      range.selectNodeContents(b);
+      // 文字が折り返すと、行ごとに矩形ができる
+      const rows = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+      return { text: b.textContent, rows: rows.size, overflow: b.scrollWidth > b.clientWidth };
+    }),
+  );
+  expect(lines).toHaveLength(4);
+  for (const l of lines) expect(l, l.text ?? '').toMatchObject({ rows: 1, overflow: false });
+  await context.close();
+});

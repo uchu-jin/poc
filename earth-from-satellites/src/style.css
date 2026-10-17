@@ -214,3 +214,16 @@ time {
 .frame[data-shape='square'] img {
   border-radius: 12px;
 }
+
+/* スマホ幅では、4つの衛星のボタンが折り返さないよう、字と余白を詰める */
+@media (max-width: 480px) {
+  .sats {
+    gap: 6px;
+  }
+
+  .sats button {
+    padding: 0 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}

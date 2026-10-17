@@ -1,10 +1,12 @@
+import { HOSTS } from '../../../shared/contract';
 import { z } from 'zod';
 import { fetchJson } from '../fetchSource';
 import type { SatelliteConfig, SatelliteId } from '../satellites';
 import { SourceError, type LatestImage, type SourceDeps } from '../types';
 import { MAX_FUTURE_SKEW_MS } from './ciraTimes';
+import { utcFromMatch } from '../utc';
 
-export const EPIC_HOST = 'epic.gsfc.nasa.gov';
+export const EPIC_HOST = HOSTS.epic;
 const EPIC_MAX_BYTES = 64 * 1024;
 const EPIC_WIDTH = 1080;
 const MAX_ENTRIES = 40;
@@ -21,25 +23,7 @@ const listSchema = z
 
 /** EPIC の date（UTC の 'YYYY-MM-DD HH:MM:SS'）を読む。存在しない日時なら null */
 export function parseEpicDate(value: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value);
-  if (!m) return null;
-  const [y, mo, d, h, mi, s] = m.slice(1).map(Number) as [
-    number,
-    number,
-    number,
-    number,
-    number,
-    number,
-  ];
-  const date = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
-  const roundTrips =
-    date.getUTCFullYear() === y &&
-    date.getUTCMonth() === mo - 1 &&
-    date.getUTCDate() === d &&
-    date.getUTCHours() === h &&
-    date.getUTCMinutes() === mi &&
-    date.getUTCSeconds() === s;
-  return roundTrips ? date : null;
+  return utcFromMatch(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value));
 }
 
 export async function resolveNasaEpic(

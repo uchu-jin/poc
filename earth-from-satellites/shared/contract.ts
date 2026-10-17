@@ -21,9 +21,15 @@ export const SATELLITE_LABELS: Record<SatelliteId, string> = {
   epic: '宇宙から',
 };
 
-const CIRA = 'slider.cira.colostate.edu';
-const STAR = 'cdn.star.nesdis.noaa.gov';
-const EPIC = 'epic.gsfc.nasa.gov';
+/** 画像の配信元のホスト。サーバーの URL の組み立てと、許可リストの両方がここを参照する */
+export const HOSTS = {
+  cira: 'slider.cira.colostate.edu',
+  star: 'cdn.star.nesdis.noaa.gov',
+  epic: 'epic.gsfc.nasa.gov',
+} as const;
+const CIRA = HOSTS.cira;
+const STAR = HOSTS.star;
+const EPIC = HOSTS.epic;
 
 /** 衛星ごとに、画像を取ってよいホスト */
 export const IMAGE_HOSTS_BY_SATELLITE: Record<SatelliteId, readonly string[]> = {
@@ -94,16 +100,23 @@ export function isSatelliteId(value: unknown): value is SatelliteId {
   return typeof value === 'string' && (SATELLITE_IDS as readonly string[]).includes(value);
 }
 
-export function isAllowedImageUrl(satelliteId: string, raw: string): boolean {
-  if (!isSatelliteId(satelliteId)) return false;
+/** https で、ホストが許可リストのどれかである URL か */
+export function isHttpsUrlOn(hosts: readonly string[], raw: string): boolean {
   try {
     const url = new URL(raw);
-    return (
-      url.protocol === 'https:' && IMAGE_HOSTS_BY_SATELLITE[satelliteId].includes(url.hostname)
-    );
+    return url.protocol === 'https:' && hosts.includes(url.hostname);
   } catch {
     return false;
   }
+}
+
+export function isAllowedImageUrl(satelliteId: string, raw: string): boolean {
+  return isSatelliteId(satelliteId) && isHttpsUrlOn(IMAGE_HOSTS_BY_SATELLITE[satelliteId], raw);
+}
+
+/** CIRA SLIDER の撮影時刻の書き方（UTC の YYYYMMDDhhmmss） */
+export function ciraStamp(date: Date): string {
+  return date.toISOString().replace(/\D/g, '').slice(0, 14);
 }
 
 /** tiles が取り決めに合っていれば、baseUrl に含まれる撮影時刻（14桁）を返す */

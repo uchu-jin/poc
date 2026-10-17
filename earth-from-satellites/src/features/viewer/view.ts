@@ -1,31 +1,38 @@
+import { SATELLITE_IDS, SATELLITE_LABELS, type SatelliteId } from '../../../shared/contract';
 import {
-  SATELLITE_IDS,
-  SATELLITE_LABELS,
-  SATELLITE_NAMES,
-  type GeostationaryId,
-  type SatelliteId,
-} from '../../../shared/contract';
-import { formatCapturedAt } from './format';
-import { staleNotice } from './freshness';
+  buildSrcset,
+  canExplore,
+  DESKTOP_SIZES,
+  MOBILE_MAX_WIDTH,
+  MOBILE_MEDIA,
+  MOBILE_SIZES,
+  showsTiles,
+  underlayUrl,
+  type Layout,
+} from './display';
+import { el, setText } from './dom';
 import { attachGestures } from './gestures';
-import type { ViewerImage } from './latestClient';
 import { MESSAGES } from './messages';
-import { REGIONS, type Region } from './regions';
+import { createMetaPanel } from './metaPanel';
+import { createRegionBar } from './regionBar';
 import type { Clock } from './scheduler';
 import { SOURCE_TRAITS } from './sources';
 import type { ViewerState } from './state';
 import { createTileLayer } from './tileLayer';
-import { isFull, type Viewport } from './viewport';
+import type { Viewport } from './viewport';
 
-export const MOBILE_MEDIA = '(max-width: 720px)';
-export const MOBILE_MAX_WIDTH = 700;
-export const DESKTOP_SIZES = '720px';
-export const MOBILE_SIZES = '100vw';
+export {
+  buildSrcset,
+  canExplore,
+  DESKTOP_SIZES,
+  MOBILE_MAX_WIDTH,
+  MOBILE_MEDIA,
+  MOBILE_SIZES,
+  showsTiles,
+  underlayUrl,
+  type Layout,
+} from './display';
 
-export interface Layout {
-  framePx: number;
-  dpr: number;
-}
 const DEFAULT_LAYOUT: Layout = { framePx: 600, dpr: 1 };
 
 export interface ViewHandlers {
@@ -45,44 +52,6 @@ export interface View {
   render(state: ViewerState, now: Date, timeZone?: string, layout?: Layout): void;
 }
 
-export function buildSrcset(image: ViewerImage, maxWidth = Infinity): string {
-  return image.images
-    .filter((i) => i.width <= maxWidth)
-    .map((i) => `${new URL(i.url).href} ${i.width}w`)
-    .join(', ');
-}
-
-/** タイル表示のとき、すぐ見えるように下に敷く全球画像 */
-export function underlayUrl(image: ViewerImage): string {
-  const smallest = [...image.images].sort((a, b) => a.width - b.width)[0];
-  return smallest ? new URL(smallest.url).href : '';
-}
-
-/** 地域の選択と拡大ができるか。読み込み中は衛星の性質で、読み込んだあとは tiles の有無で決める */
-export function canExplore(state: ViewerState): boolean {
-  if (!SOURCE_TRAITS[state.satelliteId].hasRegions) return false;
-  return state.image === null || Boolean(state.image.tiles);
-}
-
-/** タイルを表示するか（全体表示でなく、タイルの情報があるとき） */
-export function showsTiles(state: ViewerState): boolean {
-  return Boolean(state.image?.tiles) && !isFull(state.viewport);
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  attrs: Record<string, string> = {},
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-  return node;
-}
-
-// 同じ値なら入れ直さない（フォーカスを保ち、読み上げソフトに同じ文を繰り返させない）
-function setText(node: Node, value: string) {
-  if (node.textContent !== value) node.textContent = value;
-}
-
 const realClock: Clock = {
   now: () => Date.now(),
   setTimeout: (cb, ms) => setTimeout(cb, ms),
@@ -95,10 +64,14 @@ function loadWithImg(url: string): Promise<void> {
   return img.decode();
 }
 
+function statusText(state: ViewerState): string {
+  if (state.status === 'loading') return MESSAGES.loading;
+  if (state.status === 'error') return state.image ? MESSAGES.refreshFailed : MESSAGES.loadFailed;
+  return '';
+}
+
 export function createView(root: HTMLElement, handlers: ViewHandlers, deps: ViewDeps = {}): View {
   root.replaceChildren();
-  let creditKey = '';
-  let regionsFor: SatelliteId | null = null;
   let current: ViewerState | null = null;
   let lastSatellite: SatelliteId | null = null;
 
@@ -111,11 +84,7 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
     return button;
   });
 
-  const regions = el('div', {
-    role: 'group',
-    'aria-label': MESSAGES.regionGroup,
-    class: 'regions',
-  });
+  const regionBar = createRegionBar((regionId) => handlers.onRegion?.(regionId));
 
   const frame = el('figure', { class: 'frame' });
   const picture = el('picture');
@@ -151,135 +120,61 @@ export function createView(root: HTMLElement, handlers: ViewHandlers, deps: View
     isEnabled: () => Boolean(current && canExplore(current)),
   });
 
-  const meta = el('div', { class: 'meta' });
-  const name = el('p', { 'data-role': 'name', class: 'name' });
-  const time = el('time');
-  const stale = el('p', { 'data-role': 'stale', class: 'stale' });
-  const note = el('p', { 'data-role': 'note', class: 'note' });
-  const credit = el('p', { 'data-role': 'credit', class: 'credit' });
-  meta.append(name, time, stale, note, credit);
+  const meta = createMetaPanel();
 
-  root.append(group, regions, frame, meta);
+  root.append(group, regionBar.element, frame, meta.element);
 
-  function buildRegions(id: SatelliteId) {
-    regionsFor = id;
-    const list: readonly Region[] = SOURCE_TRAITS[id].hasRegions
-      ? REGIONS[id as GeostationaryId]
-      : [];
-    const full = el('button', { type: 'button', 'data-region': '' });
-    full.textContent = MESSAGES.fullDisk;
-    full.addEventListener('click', () => handlers.onRegion?.(null));
-    const chips = list.map((r) => {
-      const b = el('button', { type: 'button', 'data-region': r.id });
-      b.textContent = r.label;
-      b.addEventListener('click', () => handlers.onRegion?.(r.id));
-      return b;
-    });
-    regions.replaceChildren(full, ...chips);
+  function renderPicture(state: ViewerState, layout: Layout) {
+    const image = state.image;
+    const tiles = showsTiles(state);
+    picture.hidden = !image || tiles;
+    tileLayer.element.hidden = !tiles;
+    if (!image) {
+      tileLayer.render(null);
+      source.removeAttribute('srcset');
+      img.removeAttribute('srcset');
+      img.removeAttribute('src');
+      img.setAttribute('alt', '');
+      return;
+    }
+    tileLayer.render(
+      tiles && image.tiles
+        ? {
+            satelliteId: state.satelliteId,
+            tiles: image.tiles,
+            underlayUrl: underlayUrl(image),
+            viewport: state.viewport,
+            framePx: layout.framePx,
+            dpr: layout.dpr,
+          }
+        : null,
+    );
+    const mobileSet = buildSrcset(image, MOBILE_MAX_WIDTH) || buildSrcset(image);
+    const fullSet = buildSrcset(image);
+    if (source.getAttribute('srcset') !== mobileSet) source.setAttribute('srcset', mobileSet);
+    if (img.getAttribute('srcset') !== fullSet) img.setAttribute('srcset', fullSet);
+    img.setAttribute('alt', `${image.satelliteName} が撮影した地球`);
   }
 
   return {
     render(state, now, timeZone, layout = DEFAULT_LAYOUT) {
       current = state;
-      const traits = SOURCE_TRAITS[state.satelliteId];
       // 宇宙の背景ごと見せる画像（EPIC）は、丸く切り抜かない
-      frame.dataset.shape = traits.hasRegions ? 'disk' : 'square';
+      frame.dataset.shape = SOURCE_TRAITS[state.satelliteId].hasRegions ? 'disk' : 'square';
       buttons.forEach((b, i) =>
         b.setAttribute('aria-pressed', String(SATELLITE_IDS[i] === state.satelliteId)),
       );
-
       if (lastSatellite !== state.satelliteId) {
         // 前の衛星で始めたドラッグを、切り替え先に持ち込まない
         gestures.cancel();
         lastSatellite = state.satelliteId;
       }
-      if (regionsFor !== state.satelliteId) buildRegions(state.satelliteId);
-      regions.hidden = !canExplore(state);
+      regionBar.render(state);
       zoom.hidden = !canExplore(state);
-      for (const b of regions.querySelectorAll<HTMLButtonElement>('button[data-region]')) {
-        const id = b.dataset.region || null;
-        const on =
-          id === null ? state.regionId === null && isFull(state.viewport) : id === state.regionId;
-        b.setAttribute('aria-pressed', String(on));
-      }
       gestures.sync();
-
-      const image = state.image;
-      setText(name, image ? image.satelliteName : SATELLITE_NAMES[state.satelliteId]);
-      setText(
-        status,
-        state.status === 'loading'
-          ? MESSAGES.loading
-          : state.status === 'error'
-            ? image
-              ? MESSAGES.refreshFailed
-              : MESSAGES.loadFailed
-            : '',
-      );
-      setText(note, traits.note ?? '');
-      note.hidden = !traits.note;
-
-      const tiles = showsTiles(state);
-      picture.hidden = !image || tiles;
-      tileLayer.element.hidden = !tiles;
-      time.hidden = !image;
-      credit.hidden = !image;
-      if (!image) {
-        tileLayer.render(null);
-        source.removeAttribute('srcset');
-        img.removeAttribute('srcset');
-        img.removeAttribute('src');
-        img.setAttribute('alt', '');
-        time.removeAttribute('datetime');
-        time.textContent = '';
-        stale.textContent = '';
-        stale.hidden = true;
-        credit.replaceChildren();
-        creditKey = '';
-        return;
-      }
-
-      tileLayer.render(
-        tiles && image.tiles
-          ? {
-              satelliteId: state.satelliteId,
-              tiles: image.tiles,
-              underlayUrl: underlayUrl(image),
-              viewport: state.viewport,
-              framePx: layout.framePx,
-              dpr: layout.dpr,
-            }
-          : null,
-      );
-
-      const mobileSet = buildSrcset(image, MOBILE_MAX_WIDTH) || buildSrcset(image);
-      const fullSet = buildSrcset(image);
-      if (source.getAttribute('srcset') !== mobileSet) source.setAttribute('srcset', mobileSet);
-      if (img.getAttribute('srcset') !== fullSet) img.setAttribute('srcset', fullSet);
-      img.setAttribute('alt', `${image.satelliteName} が撮影した地球`);
-
-      time.setAttribute('datetime', image.capturedAt);
-      setText(time, formatCapturedAt(image.capturedAt, timeZone));
-
-      const warning = staleNotice(image.capturedAt, now, traits.stale);
-      setText(stale, warning ?? '');
-      stale.hidden = warning === null;
-
-      const nextCreditKey = `${image.credit.text}\n${image.credit.linkUrl ?? ''}`;
-      if (nextCreditKey === creditKey) return;
-      creditKey = nextCreditKey;
-      const label = document.createTextNode(MESSAGES.creditPrefix);
-      if (image.credit.linkUrl) {
-        const link = el('a', {
-          href: image.credit.linkUrl,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-        });
-        link.textContent = image.credit.text;
-        credit.replaceChildren(label, link);
-      } else {
-        credit.replaceChildren(label, document.createTextNode(image.credit.text));
-      }
+      setText(status, statusText(state));
+      renderPicture(state, layout);
+      meta.render(state, now, timeZone);
     },
   };
 }
