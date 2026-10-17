@@ -7,7 +7,7 @@ import {
   MOBILE_MEDIA,
   MOBILE_SIZES,
   type Layout,
-} from './view';
+} from './display';
 
 export const browserClock: Clock = {
   now: () => Date.now(),

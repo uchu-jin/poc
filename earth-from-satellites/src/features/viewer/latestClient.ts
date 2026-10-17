@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import {
   checkTiles,
+  ciraStamp,
   CREDIT_HOSTS,
   isAllowedImageUrl,
+  isHttpsUrlOn,
   MAX_IMAGE_WIDTH,
   type LatestImage,
   type SatelliteId,
@@ -11,20 +13,11 @@ import {
 const TIMEOUT_MS = 8000;
 const MAX_TEXT = 2048;
 
-function isHttpsOn(hosts: readonly string[], raw: string): boolean {
-  try {
-    const url = new URL(raw);
-    return url.protocol === 'https:' && hosts.includes(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
 const text = z.string().min(1).max(MAX_TEXT);
 
-function ciraStamp(iso: string): string | null {
+function stampOf(iso: string): string | null {
   const ms = Date.parse(iso);
-  return Number.isNaN(ms) ? null : new Date(ms).toISOString().replace(/\D/g, '').slice(0, 14);
+  return Number.isNaN(ms) ? null : ciraStamp(new Date(ms));
 }
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
@@ -49,7 +42,7 @@ const latestSchema = z
   .refine((v) => v.images.every((i) => isAllowedImageUrl(v.satelliteId, i.url)))
   // タイルは取り決めの形で、撮影時刻が capturedAt と一致すること（サーバーと同じ条件）
   .refine(
-    (v) => !v.tiles || checkTiles(v.tiles) === ciraStamp(v.capturedAt),
+    (v) => !v.tiles || checkTiles(v.tiles) === stampOf(v.capturedAt),
   ) satisfies z.ZodType<LatestImage>;
 
 export interface ViewerImage extends Omit<LatestImage, 'credit'> {
@@ -100,7 +93,7 @@ export async function fetchLatest(id: SatelliteId, deps: LatestClientDeps): Prom
       ...rest,
       credit: {
         text: credit.text,
-        linkUrl: isHttpsOn(CREDIT_HOSTS, credit.url) ? credit.url : null,
+        linkUrl: isHttpsUrlOn(CREDIT_HOSTS, credit.url) ? credit.url : null,
       },
     },
   };
