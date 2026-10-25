@@ -1,0 +1,114 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #f3ecdc;
+  color: #222;
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+}
+
+.app {
+  position: relative;
+  min-height: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.hud {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  line-height: 1.6;
+}
+
+.hud-day {
+  font-size: 1.4rem;
+}
+
+.hud-next,
+.hud-speed {
+  font-size: 0.85rem;
+  color: #5a5248;
+}
+
+.notices {
+  position: fixed;
+  left: 20px;
+  bottom: 16px;
+  max-width: 28rem;
+}
+
+.notice {
+  margin: 4px 0;
+  padding: 6px 10px;
+  border-left: 3px solid #b8432f;
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+}
+
+.seed-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+button {
+  font: inherit;
+  padding: 10px 28px;
+  border: 1px solid #2a2622;
+  background: transparent;
+  color: #2a2622;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(42, 38, 34, 0.06);
+}
+
+.seed-button {
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+}
+
+.broken-screen {
+  max-width: 36rem;
+  margin: 12vh auto 0;
+  padding: 0 20px;
+}
+
+.broken-screen h1 {
+  font-size: 1.3rem;
+  font-weight: normal;
+}
+
+.broken-raw {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+.debug {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.debug-canvas {
+  width: min(70vmin, 560px);
+  height: min(70vmin, 560px);
+}
+
+.debug-stats {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #5a5248;
+}
