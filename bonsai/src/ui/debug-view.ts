@@ -1,8 +1,16 @@
-// ?debug のときだけ出す、正面（z 方向）から見た簡易な 2D の横姿。成長の調整用（実装順 9）。
+// ?debug のときだけ右の端に小さく出す、正面（z 方向）から見た簡易な 2D の横姿と数値。成長の調整用。
+// 3D の fps と pixel ratio もここに出す（SC-014 の計測用。ink-render のプラン）。
 import type { SaveData } from '../core/types';
 
 export interface DebugView {
   draw(data: SaveData | null): void;
+  setStats(s: {
+    fps: number;
+    pixelRatio: number;
+    drawCalls: number;
+    rebuilds: number;
+    geometries: number;
+  }): void;
 }
 
 export function createDebugView(root: HTMLElement): DebugView {
@@ -15,11 +23,21 @@ export function createDebugView(root: HTMLElement): DebugView {
   canvas.className = 'debug-canvas';
   const stats = document.createElement('pre');
   stats.className = 'debug-stats';
-  wrap.append(canvas, stats);
+  const perf = document.createElement('pre');
+  perf.className = 'debug-perf';
+  perf.id = 'debug-perf';
+  wrap.append(canvas, stats, perf);
+  let lastPerf = 0;
   root.append(wrap);
   const ctx = canvas.getContext('2d');
 
   return {
+    setStats(s) {
+      const now = performance.now();
+      if (now - lastPerf < 500) return;
+      lastPerf = now;
+      perf.textContent = `fps ${s.fps.toFixed(0)}\npixel ratio ${s.pixelRatio}\n描画の呼び出し ${s.drawCalls}\n作り直し ${s.rebuilds}\nGPU の形 ${s.geometries}`;
+    },
     draw(data) {
       if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);

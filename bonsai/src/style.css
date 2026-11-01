@@ -4,7 +4,7 @@ body {
   height: 100%;
   background: #f3ecdc;
   color: #222;
-  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  font-family: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
 }
 
 .app {
@@ -94,21 +94,112 @@ button:hover {
 
 .debug {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 64px;
+  right: 16px;
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(243, 236, 220, 0.85);
+  border: 1px solid rgba(42, 38, 34, 0.15);
+  z-index: 2;
 }
 
 .debug-canvas {
-  width: min(70vmin, 560px);
-  height: min(70vmin, 560px);
+  width: 200px;
+  height: 200px;
 }
 
 .debug-stats {
   margin: 0;
   font-size: 0.8rem;
   color: #5a5248;
+}
+
+.debug-perf {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #5a5248;
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: block;
+}
+
+.hud,
+.notices,
+.seed-screen,
+.broken-screen,
+.frame {
+  z-index: 1;
+}
+
+.seed-screen {
+  pointer-events: none;
+}
+
+.seed-screen button {
+  pointer-events: auto;
+  margin-top: 40vh;
+  background: rgba(243, 236, 220, 0.8);
+}
+
+.broken-screen {
+  position: relative;
+  background: rgba(243, 236, 220, 0.95);
+  padding: 16px 20px;
+}
+
+.frame {
+  position: fixed;
+  color: rgba(42, 38, 34, 0.35);
+  font-size: 0.8rem;
+  border: 1px dashed rgba(42, 38, 34, 0.15);
+  padding: 6px 10px;
+}
+
+.frame-score {
+  top: 16px;
+  right: 20px;
+  min-width: 9rem;
+  min-height: 4rem;
+}
+
+.frame-water {
+  right: 20px;
+  bottom: 16px;
+  min-width: 9rem;
+}
+
+.frame-toolbar {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  min-width: 16rem;
+  text-align: center;
+}
+
+.frame-settings {
+  left: 20px;
+  bottom: 16px;
+}
+
+.notices {
+  bottom: 56px;
+}
+
+.render-failed {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 12px 20px;
+  background: rgba(243, 236, 220, 0.95);
+  border-left: 3px solid #b8432f;
+  z-index: 3;
 }

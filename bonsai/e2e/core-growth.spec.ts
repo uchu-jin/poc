@@ -101,6 +101,8 @@ test('初回起動で「種をまく」を押すと bonsai.save.v1 ができ、a
 test('?speed=3600 で 168 秒進めると age 168 以上・成木、「早送り ×3600」が出る（SC-002）', async ({
   page,
 }) => {
+  // 3D の描画が加わり、並列実行では 30 秒の既定に収まらないことがある
+  test.setTimeout(90_000);
   const errors = trackErrors(page);
   await page.clock.install({ time: T });
   await open(page, '?speed=3600');
