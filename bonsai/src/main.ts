@@ -1,11 +1,17 @@
 // 組み立て：URL を読み、Game を起動し、画面と window.__bonsai をつなぐ。
 import './style.css';
+import { progress } from './core/clock';
 import { Game, parseMode } from './ui/app';
 import { createBrokenScreen } from './ui/broken-save';
 import { createDebugView } from './ui/debug-view';
 import { createHud } from './ui/hud';
+import { createLayout } from './ui/layout';
+import { showRenderFailed } from './ui/render-failed';
 import { createSeedScreen, randomSeed } from './ui/seed-button';
 import type { SaveData } from './core/types';
+import type { Renderer } from './render/renderer';
+import type { PickResult } from './render/picking';
+import type { CameraState } from './render/camera-controls';
 
 declare global {
   interface Window {
@@ -13,6 +19,8 @@ declare global {
       advance(hours: number): number | null;
       plant(seed?: number): boolean;
       readonly state: SaveData | null;
+      pickAt(clientX: number, clientY: number): PickResult;
+      readonly camera: CameraState | null;
     };
   }
 }
@@ -29,6 +37,7 @@ const root = document.createElement('div');
 root.className = 'app';
 document.body.append(root);
 
+createLayout(root);
 const hud = createHud(root);
 const seedScreen = createSeedScreen(root, () => {
   game.plant(Date.now());
@@ -50,8 +59,12 @@ function render(treeChanged: boolean): void {
 
 let frame = 0;
 function loop(): void {
-  const steps = game.tick(Date.now());
+  const now = Date.now();
+  const steps = game.tick(now);
   render(steps > 0);
+  const d = game.data;
+  scene3d?.frame(d, d ? progress(now, d.lastTickAt, mode.speed) : 0);
+  if (scene3d && debugView) debugView.setStats(scene3d.stats);
   frame = requestAnimationFrame(loop);
 }
 
@@ -90,7 +103,28 @@ window.__bonsai = {
   get state() {
     return game.data ? structuredClone(game.data) : null;
   },
+  // 確認用：当たり判定の結果（後の手入れの機能が使う関数を、E2E から確かめるため）
+  pickAt(clientX: number, clientY: number) {
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) return null;
+    return scene3d ? scene3d.pickAt(clientX, clientY) : null;
+  },
+  // 確認用：いまのカメラ（読むだけ。E2E でカメラの操作を確かめるため。テストレビュー P0-1）
+  get camera() {
+    return scene3d ? scene3d.camera : null;
+  },
 };
+
+// 描画は動的 import。Three.js が読めない・WebGL を作れないときも、成長と保存は止めない（要件 6章 #10）
+let scene3d: Renderer | null = null;
+import('./render/renderer')
+  .then((m) => m.createRenderer(root))
+  .then((r) => {
+    scene3d = r;
+  })
+  .catch((e: unknown) => {
+    console.warn('3D を読み込めませんでした', e);
+    showRenderFailed(root);
+  });
 
 game.boot(Date.now());
 render(true);
