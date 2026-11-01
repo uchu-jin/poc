@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>成長の仕組みの比較（ADR-0002）</title>
+    <style>
+      body { margin: 16px; background: #f3ecdc; font-family: 'Hiragino Mincho ProN', serif; }
+      h2 { font-weight: normal; margin: 16px 0 4px; }
+      .row { display: flex; gap: 8px; }
+      .cell { width: 260px; }
+      .cell p { margin: 0; font-size: 12px; }
+      .cell .debug { position: static; transform: none; display: block; }
+      .cell canvas { width: 240px !important; height: 240px !important; }
+      .cell pre { font-size: 10px; margin: 0; columns: 2; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
