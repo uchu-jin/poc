@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Example</title>
+    <item>
+      <title>Designing with Claude&nbsp;agents</title>
+      <link>https://example.com/a?utm_source=rss</link>
+      <pubDate>Sat, 31 Oct 2026 10:00:00 GMT</pubDate>
+      <content:encoded><![CDATA[<p><img src="https://example.com/a.png"> Body text.</p><p>The post Designing appeared first on Example.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Grid layouts in CSS</title>
+      <link>https://example.com/b</link>
+      <pubDate>Fri, 30 Oct 2026 10:00:00 GMT</pubDate>
+      <description>Plain &amp; simple.</description>
+      <media:thumbnail url="https://example.com/b.jpg" />
+    </item>
+    <item>
+      <title></title>
+      <link>https://example.com/no-title</link>
+    </item>
+  </channel>
+</rss>
