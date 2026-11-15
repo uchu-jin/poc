@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom</title>
+  <entry>
+    <title>求人: デザイナー募集</title>
+    <link rel="alternate" href="https://example.jp/jobs" />
+    <updated>2026-10-31T00:00:00Z</updated>
+    <summary>ロゴのデザイン</summary>
+  </entry>
+  <entry>
+    <title>ロゴ刷新の舞台裏</title>
+    <link rel="self" href="https://example.jp/self" />
+    <link rel="alternate" href="https://example.jp/logo" />
+    <published>2026-10-29T00:00:00Z</published>
+    <summary>新しいアイデンティティ</summary>
+  </entry>
+  <entry>
+    <title>イベントのお知らせ</title>
+    <link href="https://example.jp/event" />
+    <updated>2026-10-28T00:00:00Z</updated>
+  </entry>
+</feed>
