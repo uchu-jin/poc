@@ -1,0 +1,8 @@
+試行数（方式ごと）: 16968
+（修正版：Xor の基準を毎回作り直す）
+method | 例外 | 平均ms | D との差 >0.5% の数 | 最大の差% (どこで)
+A1     |  631 | 0.495 |   328 | 10.530 (slab-miter g w=24 slant=12 width=1)
+        例外の例: round-round N w=20 slant=0 width=0.8 ／ round-round N w=20 slant=0 width=1 ／ round-round N w=20 slant=0 width=1.25
+A1r    |    0 | 0.490 |  4314 | 62.180 (round-round A w=28 slant=12 width=1)
+A2     |    0 | 3.215 |   328 | 10.530 (slab-miter g w=24 slant=12 width=1)
+D      |    0 | 0.178 |     0 | 0.000 ()

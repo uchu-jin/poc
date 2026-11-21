@@ -1,0 +1,17 @@
+variant      | A1: A 1文字ms | A1: 95文字ms | A1 リング数 A/N/x/O/8/g/@ (w=40 → 90 → 160)
+flat-miter   |         0.221 |         44.5 | 2/1/1/2/3/2/3 → 2/1/1/2/3/2/3 → 2/1/1/2/3/2/3
+/Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/node_modules/polygon-clipping/dist/polygon-clipping.cjs.js:1553
+    if (!node) throw new Error(`Unable to find segment #${segment.id} ` + `[${segment.leftSE.point.x}, ${segment.leftSE.point.y}] -> ` + `[${segment.rightSE.point.x}, ${segment.rightSE.point.y}] ` + "in SweepLine tree.");
+                     ^
+
+Error: Unable to find segment #62764 [36.53333781699193, -11.646857029613436] -> [41.02885682970026, -22.499999999999986] in SweepLine tree.
+    at SweepLine.process (/Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/node_modules/polygon-clipping/dist/polygon-clipping.cjs.js:1553:22)
+    at Operation.run (/Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/node_modules/polygon-clipping/dist/polygon-clipping.cjs.js:1750:35)
+    at Object.union (/Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/node_modules/polygon-clipping/dist/polygon-clipping.cjs.js:1776:20)
+    at outlineA1 (file:///Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/spike2.mjs:89:39)
+    at file:///Users/takumikawazu/Documents/poc/glyph-studio/docs/adr/spikes/0001/spike2.mjs:112:54
+    at ModuleJob.run (node:internal/modules/esm/module_job:271:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:547:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:116:5)
+
+Node.js v22.12.0

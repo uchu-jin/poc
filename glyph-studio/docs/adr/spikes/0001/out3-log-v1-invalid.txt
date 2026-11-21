@@ -1,0 +1,7 @@
+試行数（方式ごと）: 16968
+method | 例外 | 平均ms | D との差 >0.5% の数 | 最大の差% (どこで)
+A1     |  631 | 0.505 |   328 | 10.530 (slab-miter g w=24 slant=12 width=1)
+        例外の例: round-round N w=20 slant=0 width=0.8 ／ round-round N w=20 slant=0 width=1 ／ round-round N w=20 slant=0 width=1.25
+A1r    |    0 | 0.497 |  4535 | 97.579 (flat-miter x w=20 slant=12 width=0.8)
+A2     |    0 | 3.295 |   570 | 95.514 (flat-miter x w=20 slant=12 width=0.8)
+D      |    0 | 0.185 |     0 | 0.000 ()

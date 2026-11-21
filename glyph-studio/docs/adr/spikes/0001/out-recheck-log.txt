@@ -1,0 +1,4 @@
+試行数: 16968 （基準＝D、差＝paper.js の exclude の面積 ÷ D の面積）
+A2 | D との差 >0.5% 2426 件 | 最大 792.469% (flat-miter O w=20 slant=12 width=1.25) | 測れなかった 0
+E | D との差 >0.5% 0 件 | 最大 0.174% (flat-miter x w=20 slant=0 width=1) | 測れなかった 0
+V-09 の条件（slab-miter g w=24 slant=12）: A2 と D の差 0.011 %
