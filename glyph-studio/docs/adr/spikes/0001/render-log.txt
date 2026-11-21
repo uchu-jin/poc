@@ -1,0 +1,5 @@
+A1: CoreText 名前=SpikeA1 Regular glyphs=8
+A2: CoreText 名前=SpikeA2 Regular glyphs=8
+B-raw: CoreText 名前=SpikeBraw Regular glyphs=8
+B-norm: CoreText 名前=SpikeBnorm Regular glyphs=8
+out/render.png

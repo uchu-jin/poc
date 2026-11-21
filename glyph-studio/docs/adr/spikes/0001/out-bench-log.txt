@@ -1,0 +1,7 @@
+userAgent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/6.28899.2 Chrome/156.0.8078.100 Safari/537.36
+flat-miter  A 1文字 平均 0.064 ms・最大 1.300 ms ／ 95文字 15.9 ms
+round-round A 1文字 平均 0.110 ms・最大 0.400 ms ／ 95文字 10.9 ms
+slab-miter  A 1文字 平均 0.035 ms・最大 0.300 ms ／ 95文字 8.8 ms
+slab-round  A 1文字 平均 0.052 ms・最大 0.400 ms ／ 95文字 7.4 ms
+round-round w=90 slant=8 リング/点数: A:2/50 N:1/52 x:1/68 O:2/128 8:3/230 g:2/172 @:3/274
+（Node 側 spike5 の E: A:2/50 N:1/52 x:1/68 O:2/128 8:3/230 g:2/172 @:3/274）

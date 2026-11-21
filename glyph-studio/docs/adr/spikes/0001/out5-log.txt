@@ -1,0 +1,8 @@
+clipper-lib: Xor・Union のあと入力が変わったか: false
+試行数（方式ごと）: 16968
+D | 例外 0 | 平均 0.203 ms
+E | 例外 0 | 平均 0.091 ms | D との差 >0.5% 58 件 | 最大の差 8.1308% (slab-miter g w=106 slant=12 width=0.8)
+D flat-miter  A 1文字 0.042 ms ／ 95文字 18.3 ms（膨らませ込み）
+D round-round A 1文字 0.184 ms ／ 95文字 29.4 ms（膨らませ込み）
+E flat-miter  A 1文字 0.014 ms ／ 95文字 9.0 ms（膨らませ込み）
+E round-round A 1文字 0.095 ms ／ 95文字 13.5 ms（膨らませ込み）
