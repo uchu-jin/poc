@@ -23,21 +23,25 @@ export function capPolys(
   w: StrokeWeights,
   terminal: Terminal,
   isLineEnd: boolean,
+  /** スラブを左右それぞれ、端の中心からどこまで張り出してよいか（隣の線までの空き） */
+  room: { left: number; right: number } = { left: Infinity, right: Infinity },
 ): Poly[] {
   if (terminal === 'round') return [[circle(end, strokeWidthAt(out, w) / 2)]];
   if (terminal === 'slab' && isLineEnd && Math.abs(out[1]) >= SLAB_MIN_SIN) {
     const { thickness, overhang } = slabSize(w.weight);
     const [x, y] = end;
+    const left = x - Math.min(overhang, room.left);
+    const right = x + Math.min(overhang, room.right);
     // 下向きの端（足）は端から上へ、上向きの端は端から下へ
     const y0 = out[1] < 0 ? y : y - thickness;
     const y1 = out[1] < 0 ? y + thickness : y;
     return [
       [
         [
-          [x - overhang, y0],
-          [x + overhang, y0],
-          [x + overhang, y1],
-          [x - overhang, y1],
+          [left, y0],
+          [right, y0],
+          [right, y1],
+          [left, y1],
         ],
       ],
     ];

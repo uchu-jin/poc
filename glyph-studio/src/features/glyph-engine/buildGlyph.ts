@@ -5,7 +5,7 @@ import { boundsOf, distToSegment, unit } from './geometry';
 import { SIDE_BEARING, SPACE_WIDTH } from './metrics';
 import { clampParams } from './params';
 import { DEFAULT_SKELETONS, GLYPH_CHARS } from './skeletons';
-import { capPolys, joinPolys } from './terminals';
+import { capPolys, joinPolys, slabSize } from './terminals';
 import { defaultMakeClipper, unionPolys, type MakeClipper } from './union';
 import { validateSkeleton } from './validateSkeleton';
 import { remapSkeleton } from './verticalRemap';
@@ -117,6 +117,61 @@ function onOtherPiece(p: Vec, self: number, pieces: Piece[]): boolean {
 
 type End = { piece: number; at: Vec; away: Vec; isLine: boolean };
 
+/** スラブが隣の線までの空きの何割まで張り出してよいか（2026-11-23 作者が決定） */
+const SLAB_ROOM_SHARE = 0.4;
+
+/**
+ * スラブを左右それぞれどこまで張り出してよいか。スラブの高さの範囲にある他の線を、太さの半分だけ太らせて
+ * 障害物とし、縦線の端から障害物までの空きの 4 割まで（2 本の足のスラブが向かい合ってもくっつかない）
+ */
+function slabRoom(e: End, pieces: Piece[], w: { weight: number; hWeight: number }) {
+  const out: Vec = [-e.away[0], -e.away[1]];
+  const stemHalf = strokeWidthAt(out, w) / 2;
+  const { thickness } = slabSize(w.weight);
+  const y0 = out[1] < 0 ? e.at[1] : e.at[1] - thickness;
+  const y1 = y0 + thickness;
+  const hObs = Math.max(w.weight, w.hWeight) / 2;
+  const lo = y0 - hObs;
+  const hi = y1 + hObs;
+  let freeL = Infinity;
+  let freeR = Infinity;
+  pieces.forEach((pc, j) => {
+    if (j === e.piece) return;
+    const pts = pc.pts;
+    const m = pc.closed ? pts.length : pts.length - 1;
+    for (let i = 0; i < m; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      // 線分のうち y が [lo, hi] に入る部分の x の範囲
+      let t0 = 0;
+      let t1 = 1;
+      const dy = b[1] - a[1];
+      if (dy === 0) {
+        if (a[1] < lo || a[1] > hi) continue;
+      } else {
+        const ta = (lo - a[1]) / dy;
+        const tb = (hi - a[1]) / dy;
+        t0 = Math.max(0, Math.min(ta, tb));
+        t1 = Math.min(1, Math.max(ta, tb));
+        if (t0 > t1) continue;
+      }
+      const xa = a[0] + (b[0] - a[0]) * t0;
+      const xb = a[0] + (b[0] - a[0]) * t1;
+      const minX = Math.min(xa, xb) - hObs;
+      const maxX = Math.max(xa, xb) + hObs;
+      const x = e.at[0];
+      if (maxX <= x) freeL = Math.min(freeL, x - stemHalf - maxX);
+      else if (minX >= x) freeR = Math.min(freeR, minX - (x + stemHalf));
+      else {
+        freeL = 0;
+        freeR = 0;
+      }
+    }
+  });
+  const room = (free: number) => stemHalf + Math.max(0, free) * SLAB_ROOM_SHARE;
+  return { left: room(freeL), right: room(freeR) };
+}
+
 function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
   const pieces = piecesOf(skeleton);
   const w = { weight: p.weight, hWeight: p.hWeight };
@@ -173,7 +228,8 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
     // 他の線の上にある端（横棒の端など）には何も足さない
     if (onOtherPiece(e.at, e.piece, pieces)) return;
     const out: Vec = [-e.away[0], -e.away[1]];
-    polys.push(...capPolys(e.at, out, w, p.terminal, e.isLine));
+    const room = p.terminal === 'slab' ? slabRoom(e, pieces, w) : undefined;
+    polys.push(...capPolys(e.at, out, w, p.terminal, e.isLine, room));
   });
   return polys;
 }

@@ -38,6 +38,20 @@ describe('capPolys（端）', () => {
   });
 });
 
+describe('capPolys（スラブの張り出しの上限）', () => {
+  it('左右それぞれに渡した空きの幅を超えない。左に空きがなければ左へ張り出さない', () => {
+    const w = { weight: 100, hWeight: 100 };
+    const xs = (room: { left: number; right: number }) =>
+      capPolys([100, 0], [0, -1], w, 'slab', true, room)[0]![0]!.map((p) => p[0]);
+    const a = xs({ left: 80, right: 1000 });
+    expect(Math.min(...a)).toBeCloseTo(20);
+    expect(Math.max(...a)).toBeCloseTo(240);
+    const b = xs({ left: 50, right: 60 });
+    expect(Math.min(...b)).toBeCloseTo(50);
+    expect(Math.max(...b)).toBeCloseTo(160);
+  });
+});
+
 describe('slabSize', () => {
   it.each([
     [20, 12, 28],
