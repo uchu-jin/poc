@@ -1,6 +1,7 @@
 // 実装レビュー（2026-11-23）の P1 への対応：壊れた入力・重い入力・潰れた形
 import { describe, expect, it } from 'vitest';
-import { buildGlyph, buildGlyphs } from '../../src/features/glyph-engine/buildGlyph';
+import { buildGlyph } from '../../src/features/glyph-engine/buildGlyph';
+import { buildGlyphs } from '../../src/features/glyph-engine/buildGlyphs';
 import { boundsOf, crossSection } from '../../src/features/glyph-engine/geometry';
 import { MAX_FLAT_POINTS } from '../../src/features/glyph-engine/metrics';
 import { DEFAULT_PARAMS, clampParams } from '../../src/features/glyph-engine/params';

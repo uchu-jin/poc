@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGlyphs } from '../../src/features/glyph-engine/buildGlyph';
+import { buildGlyphs } from '../../src/features/glyph-engine/buildGlyphs';
 import { holeCount, signedArea } from '../../src/features/glyph-engine/geometry';
 import { PARAM_LIMITS } from '../../src/features/glyph-engine/params';
 import { EXPECTED_HOLES, GLYPH_CHARS } from '../../src/features/glyph-engine/skeletons';

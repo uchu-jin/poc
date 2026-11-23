@@ -23,15 +23,18 @@ export function flattenSegment(from: Vec, seg: Segment, steps = CURVE_STEPS): Ve
   return out;
 }
 
+/** 折れ線 pts の後ろに区間 seg を折れ線にして足す。直前と同じ点は足さない */
+export function appendSegment(pts: Vec[], seg: Segment): void {
+  for (const p of flattenSegment(pts[pts.length - 1]!, seg)) {
+    const last = pts[pts.length - 1]!;
+    if (last[0] !== p[0] || last[1] !== p[1]) pts.push(p);
+  }
+}
+
 /** 骨格の線を折れ線にする。閉じた線は最後の点（始点と重複）を落とす */
 export function flattenStroke(stroke: Stroke): Vec[] {
   const pts: Vec[] = [v(stroke.start)];
-  for (const seg of stroke.segments) {
-    for (const p of flattenSegment(pts[pts.length - 1]!, seg)) {
-      const last = pts[pts.length - 1]!;
-      if (last[0] !== p[0] || last[1] !== p[1]) pts.push(p);
-    }
-  }
+  for (const seg of stroke.segments) appendSegment(pts, seg);
   if (stroke.closed && pts.length > 1) {
     const first = pts[0]!;
     const last = pts[pts.length - 1]!;

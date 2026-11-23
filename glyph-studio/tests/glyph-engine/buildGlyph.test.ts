@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildGlyph, buildGlyphs } from '../../src/features/glyph-engine/buildGlyph';
+import { buildGlyph } from '../../src/features/glyph-engine/buildGlyph';
+import { buildGlyphs } from '../../src/features/glyph-engine/buildGlyphs';
 import { boundsOf, crossSection, holeCount } from '../../src/features/glyph-engine/geometry';
 import { DEFAULT_PARAMS } from '../../src/features/glyph-engine/params';
 import { SIDE_BEARING, SPACE_WIDTH } from '../../src/features/glyph-engine/metrics';

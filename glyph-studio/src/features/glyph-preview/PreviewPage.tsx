@@ -1,7 +1,7 @@
 // 確認用の一覧ページ（操作なし）。既定値と、上限・下限の代表的な組み合わせで 62 字＋スペースを並べる。
 // 外部のフォントや CDN は読み込まない。A の変形画面ができたら置き換える
 import { useMemo } from 'react';
-import { buildGlyphs } from '../glyph-engine/buildGlyph';
+import { buildGlyphs } from '../glyph-engine/buildGlyphs';
 import { holeCount } from '../glyph-engine/geometry';
 import { DEFAULT_PARAMS, PARAM_LIMITS } from '../glyph-engine/params';
 import { EXPECTED_HOLES, GLYPH_CHARS } from '../glyph-engine/skeletons';

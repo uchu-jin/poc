@@ -1,5 +1,6 @@
 // 小文字の x ハイトを区間ごとに伸び縮みさせる（FR-019）
 import { ASCENDER, BASE_X_HEIGHT } from './metrics';
+import { mapSkeletonPoints } from './transformSkeleton';
 import type { Skeleton } from './types';
 
 /**
@@ -14,16 +15,5 @@ export function remapY(y: number, xHeight: number): number {
 
 /** 骨格のすべての点（制御点を含む）の y を写した写しを返す */
 export function remapSkeleton(skeleton: Skeleton, xHeight: number): Skeleton {
-  const p = <T extends { y: number }>(pt: T): T => ({ ...pt, y: remapY(pt.y, xHeight) });
-  return {
-    strokes: skeleton.strokes.map((s) => ({
-      ...s,
-      start: p(s.start),
-      segments: s.segments.map((seg) =>
-        seg.kind === 'line'
-          ? { kind: 'line', to: p(seg.to) }
-          : { kind: 'cubic', c1: p(seg.c1), c2: p(seg.c2), to: p(seg.to) },
-      ),
-    })),
-  };
+  return mapSkeletonPoints(skeleton, (p) => ({ ...p, y: remapY(p.y, xHeight) }));
 }
