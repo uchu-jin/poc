@@ -1,6 +1,6 @@
 // ADR-0001: 骨格の折れ線を自前のコードで膨らませる。線の向きで太さを変える（コントラスト、FR-020）。
 // ADR-0001 で検証したのは太さが一定の場合だけ。例外や速さの問題が出たら ADR-0001 の「見直す条件」に戻る
-import { dot, leftNormal, signedArea, unit } from './geometry';
+import { dot, leftNormal, unit } from './geometry';
 import type { Poly, Ring, Vec } from './types';
 
 export type StrokeWeights = { weight: number; hWeight: number };
@@ -52,17 +52,6 @@ function offsetSides(pts: Vec[], closed: boolean, w: StrokeWeights): { left: Rin
     p[1] - off[i]!.n[1] * off[i]!.h,
   ]);
   return { left, right };
-}
-
-/**
- * 折れ線を膨らませた輪郭。開いた線は 1 つのリング、閉じた線は外側と内側の 2 つのリング（先頭が外側）を返す。
- * 骨格の点と同じ順に並ぶので、点ごとの太さを確かめるのに使う
- */
-export function expandPolyline(pts: Vec[], closed: boolean, w: StrokeWeights): Poly {
-  if (pts.length < 2) return [];
-  const { left, right } = offsetSides(pts, closed, w);
-  if (!closed) return [[...left, ...right.reverse()]];
-  return Math.abs(signedArea(left)) >= Math.abs(signedArea(right)) ? [left, right] : [right, left];
 }
 
 /**

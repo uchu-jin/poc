@@ -1,6 +1,13 @@
 // 骨格データの検査。既定データのテストと、buildGlyph の入口の両方で使う。
 // 個別に直した骨格はのちに保存データから入ってくるので、形から疑って調べる（docs/rules/security.md）
-import { COORD_MAX, COORD_MIN, MAX_POINTS_PER_STROKE, MAX_STROKES } from './metrics';
+import {
+  COORD_MAX,
+  COORD_MIN,
+  CURVE_STEPS,
+  MAX_FLAT_POINTS,
+  MAX_POINTS_PER_STROKE,
+  MAX_STROKES,
+} from './metrics';
 import type { Point, Segment, Skeleton, Stroke } from './types';
 
 export type ValidateResult = { ok: true; skeleton: Skeleton } | { ok: false; message: string };
@@ -55,7 +62,14 @@ export function validateSkeleton(v: unknown): ValidateResult {
     if (v.strokes.length === 0) throw new Invalid('線が 0 本');
     if (v.strokes.length > MAX_STROKES) throw new Invalid(`線が ${MAX_STROKES} 本を超える`);
     const ids = new Set<string>();
-    return { ok: true, skeleton: { strokes: v.strokes.map((s) => stroke(s, ids)) } };
+    const strokes = v.strokes.map((s) => stroke(s, ids));
+    const flat = strokes.reduce(
+      (n, st) =>
+        n + 1 + st.segments.reduce((m, g) => m + (g.kind === 'cubic' ? CURVE_STEPS : 1), 0),
+      0,
+    );
+    if (flat > MAX_FLAT_POINTS) throw new Invalid(`折れ線にした点が ${MAX_FLAT_POINTS} 個を超える`);
+    return { ok: true, skeleton: { strokes } };
   } catch (e) {
     if (e instanceof Invalid) return { ok: false, message: e.message };
     return { ok: false, message: '骨格データを読めない' };

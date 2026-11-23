@@ -44,6 +44,7 @@ export function unionPolys(
     const paths = normalize(polys).map((ring) =>
       ring.map(([x, y]) => ({ X: Math.round(x * SCALE), Y: Math.round(y * SCALE) })),
     );
+    if (paths.length === 0) return { ok: true, outline: [] };
     const clipper = makeClipper();
     clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
     const solution: { X: number; Y: number }[][] = [];

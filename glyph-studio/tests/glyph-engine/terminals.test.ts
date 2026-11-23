@@ -102,6 +102,15 @@ describe('joinPolys（角）', () => {
     expect(at(phi0 - 1e-6)).toBe(3);
   });
 
+  it('引数の順番を入れ替えても同じ形（太さが違う 2 本でも）', () => {
+    // 逆コントラスト（太さ 20・横線 150）の Y の、左の腕と縦線のつなぎ目
+    const arm: Vec = [-250 / Math.hypot(250, 370), 370 / Math.hypot(250, 370)];
+    const stem: Vec = [0, -1];
+    const ab = joinPolys([0, 0], arm, 21.14, stem, 10, 'miter');
+    const ba = joinPolys([0, 0], stem, 10, arm, 21.14, 'miter');
+    expect(ab[0]![0]!.length).toBe(ba[0]![0]!.length);
+  });
+
   it('まっすぐつながる 2 本（180°）→ 隙間がないので何も足さない', () => {
     expect(joinPolys([0, 0], [0, 1], 45, [0, -1], 45, 'miter')).toEqual([]);
   });

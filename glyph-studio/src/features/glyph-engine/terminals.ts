@@ -76,8 +76,10 @@ export function joinPolys(p: Vec, t1: Vec, h1: number, t2: Vec, h2: number, join
   // c1 + s·t1 = c2 + u·t2 を解く
   const d = sub(c2, c1);
   const s = cross(d, t2) / denom;
+  const u = cross(d, t1) / denom;
   const x: Vec = [c1[0] + s * t1[0], c1[1] + s * t1[1]];
   const extension = len(sub(x, p));
-  if (extension <= MITER_LIMIT * (h1 + h2) && s <= 0) return [[[p, c1, x, c2]]];
+  // 交点が両方の線の「後ろ」（線が伸びる向きと反対）にあるときだけ miter。引数の順番によらない
+  if (extension <= MITER_LIMIT * (h1 + h2) && s <= 0 && u <= 0) return [[[p, c1, x, c2]]];
   return [[[p, c1, c2]]];
 }

@@ -18,6 +18,11 @@ export const COORD_MAX = 1000;
 /** 1 文字あたりの線の数・1 本あたりの点の数の上限（仮置き） */
 export const MAX_STROKES = 16;
 export const MAX_POINTS_PER_STROKE = 64;
+/**
+ * 1 文字を折れ線にしたときの点の数の上限（直線の区間 1、曲線の区間 16、線ごとに始点 1）。既定の 62 字の
+ * 最大は 130（8）。上限の中のどんな骨格でも組み立てが重くなりすぎないように（実装レビュー P1-2）
+ */
+export const MAX_FLAT_POINTS = 400;
 
 /** 曲線 1 本を折れ線にするときの分割数（ADR-0001） */
 export const CURVE_STEPS = 16;

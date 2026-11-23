@@ -104,9 +104,10 @@ function piecesOf(skeleton: Skeleton): Piece[] {
 
 const near = (a: Vec, b: Vec) => Math.hypot(a[0] - b[0], a[1] - b[1]) < TOUCH_EPS;
 
-function onOtherPiece(p: Vec, self: number, pieces: Piece[]): boolean {
+/** 端 p が、exclude 以外の線の上にあるか */
+function onOtherPiece(p: Vec, exclude: Set<number>, pieces: Piece[]): boolean {
   return pieces.some((piece, j) => {
-    if (j === self) return false;
+    if (exclude.has(j)) return false;
     const pts = piece.pts;
     const m = piece.closed ? pts.length : pts.length - 1;
     for (let i = 0; i < m; i++)
@@ -116,6 +117,11 @@ function onOtherPiece(p: Vec, self: number, pieces: Piece[]): boolean {
 }
 
 type End = { piece: number; at: Vec; away: Vec; isLine: boolean };
+/** 自由な端と、その端に重なっている線（同じ線を重ねた・引き返した。スラブの障害物から除く） */
+type FreeEnd = End & { overlapping: Set<number> };
+
+/** 同じ向きとみなす角度（5°） */
+const SAME_DIR_COS = Math.cos((5 * Math.PI) / 180);
 
 /** スラブが隣の線までの空きの何割まで張り出してよいか（2026-11-23 作者が決定） */
 const SLAB_ROOM_SHARE = 0.4;
@@ -126,7 +132,7 @@ const SLAB_ROOM_SHARE = 0.4;
  * 自分の線の他の部分と、尖った角の図形も障害物に数える
  */
 function slabRoom(
-  e: End,
+  e: FreeEnd,
   pieces: Piece[],
   joinShapes: Poly[],
   w: { weight: number; hWeight: number },
@@ -174,7 +180,8 @@ function slabRoom(
   pieces.forEach((pc, j) => {
     const pts = pc.pts;
     const m = pc.closed ? pts.length : pts.length - 1;
-    for (let i = 0; i < m; i++) consider(pts[i]!, pts[(i + 1) % pts.length]!, hObs, j === e.piece);
+    for (let i = 0; i < m; i++)
+      consider(pts[i]!, pts[(i + 1) % pts.length]!, hObs, e.overlapping.has(j));
   });
   // 尖った角の図形（M・w の頂点の先端がスラブに届かないように）
   for (const poly of joinShapes)
@@ -209,7 +216,7 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
 
   const used = new Set<number>();
   const joinShapes: Poly[] = [];
-  const freeEnds: End[] = [];
+  const freeEnds: FreeEnd[] = [];
   ends.forEach((e, i) => {
     if (used.has(i)) return;
     const group = [i];
@@ -217,33 +224,38 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
       if (j !== i && !used.has(j) && near(e.at, f.at)) group.push(j);
     });
     group.forEach((g) => used.add(g));
-    if (group.length >= 2) {
+    // 同じ向きに離れていく端は 1 つにまとめる（同じ線を重ねた・同じ道を引き返した。実装レビュー P1-5）
+    const dirs: End[] = [];
+    for (const g of group) {
+      const x = ends[g]!;
+      if (!dirs.some((d) => d.away[0] * x.away[0] + d.away[1] * x.away[1] > SAME_DIR_COS))
+        dirs.push(x);
+    }
+    const overlapping = new Set(group.map((g) => ends[g]!.piece));
+    if (dirs.length >= 2) {
       // 線どうしがつながる点 → 角
       const half = (x: End) => strokeWidthAt(x.away, w) / 2;
       if (p.join === 'round') {
         joinShapes.push(
-          ...joinPolys(
-            e.at,
-            e.away,
-            Math.max(...group.map((g) => half(ends[g]!))),
-            e.away,
-            0,
-            'round',
-          ),
+          ...joinPolys(e.at, e.away, Math.max(...dirs.map(half)), e.away, 0, 'round'),
         );
         return;
       }
-      for (let a = 0; a < group.length; a++)
-        for (let b = a + 1; b < group.length; b++) {
-          const x = ends[group[a]!]!;
-          const y = ends[group[b]!]!;
-          joinShapes.push(...joinPolys(x.at, x.away, half(x), y.away, half(y), 'miter'));
-        }
+      // 向きの順に並べ、隣り合う向きの組だけに角を付ける（組の数を端の数に比例させる。実装レビュー P1-1）
+      const sorted = [...dirs].sort(
+        (a, b) => Math.atan2(a.away[1], a.away[0]) - Math.atan2(b.away[1], b.away[0]),
+      );
+      const pairs = sorted.length === 2 ? 1 : sorted.length;
+      for (let k = 0; k < pairs; k++) {
+        const x = sorted[k]!;
+        const y = sorted[(k + 1) % sorted.length]!;
+        joinShapes.push(...joinPolys(x.at, x.away, half(x), y.away, half(y), 'miter'));
+      }
       return;
     }
-    // 他の線の上にある端（横棒の端など）には何も足さない
-    if (onOtherPiece(e.at, e.piece, pieces)) return;
-    freeEnds.push(e);
+    // 他の線の上にある端（横棒の端など。T 字）には、どの端の形も足さない
+    if (onOtherPiece(e.at, overlapping, pieces)) return;
+    freeEnds.push({ ...dirs[0]!, overlapping });
   });
   polys.push(...joinShapes);
   // 自由な端の形。スラブは、線と尖った角の図形を避けて張り出す
@@ -275,6 +287,19 @@ function scaleX(skeleton: Skeleton, k: number): Skeleton {
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
 export function buildGlyph(ch: string, params: Params, options: BuildOptions = {}): BuildResult {
+  try {
+    return buildGlyphUnsafe(ch, params, options);
+  } catch (e) {
+    // 想定外の例外も外に出さない（1 文字の失敗が他の文字や画面を止めないように。実装レビュー P1-1）
+    return {
+      ok: false,
+      reason: 'union-failed',
+      message: `組み立て中に想定外のエラー: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
+
+function buildGlyphUnsafe(ch: string, params: Params, options: BuildOptions): BuildResult {
   if (ch === ' ') return { ok: true, outline: [], advanceWidth: SPACE_WIDTH, bounds: null };
   const source = options.skeleton !== undefined ? options.skeleton : DEFAULT_SKELETONS[ch];
   if (source === undefined)
@@ -292,6 +317,8 @@ export function buildGlyph(ch: string, params: Params, options: BuildOptions = {
     poly.map((ring) => ring.map(([x, y]) => [x + y * tan, y] as Vec)),
   );
 
+  if (polys.length === 0)
+    return { ok: false, reason: 'empty-outline', message: `「${ch}」の輪郭が空` };
   const merged = unionPolys(polys, options.makeClipper ?? defaultMakeClipper);
   if (!merged.ok) return { ok: false, reason: 'union-failed', message: merged.message };
   if (merged.outline.length === 0)

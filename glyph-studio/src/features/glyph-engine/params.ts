@@ -33,8 +33,11 @@ function clampNumber(v: unknown, key: NumericKey): number {
   return Math.min(max, Math.max(min, v));
 }
 
-/** パラメータを上限・下限に丸める（FR-005）。未知の値・欠けた値は既定値にする */
-export function clampParams(input: Partial<Record<keyof Params, unknown>>): Params {
+/** パラメータを上限・下限に丸める（FR-005）。未知の値・欠けた値・null は既定値にする */
+export function clampParams(raw: unknown): Params {
+  // 保存データから来る null や配列なども受け付ける（実装レビュー P1-3）
+  const input: Partial<Record<keyof Params, unknown>> =
+    typeof raw === 'object' && raw !== null ? (raw as Partial<Record<keyof Params, unknown>>) : {};
   return {
     weight: clampNumber(input.weight, 'weight'),
     hWeight: clampNumber(input.hWeight, 'hWeight'),
