@@ -40,11 +40,8 @@ function offsets(pts: Vec[], closed: boolean, w: StrokeWeights): { n: Vec; h: nu
   });
 }
 
-/**
- * 折れ線を膨らませる。開いた線は 1 つのリング、閉じた線は外側と内側の 2 つのリング（先頭が外側）を返す
- */
-export function expandPolyline(pts: Vec[], closed: boolean, w: StrokeWeights): Poly {
-  if (pts.length < 2) return [];
+/** 骨格の点ごとの、左右にずらした点（点の順は骨格と同じ） */
+function offsetSides(pts: Vec[], closed: boolean, w: StrokeWeights): { left: Ring; right: Ring } {
   const off = offsets(pts, closed, w);
   const left: Ring = pts.map((p, i) => [
     p[0] + off[i]!.n[0] * off[i]!.h,
@@ -54,6 +51,33 @@ export function expandPolyline(pts: Vec[], closed: boolean, w: StrokeWeights): P
     p[0] - off[i]!.n[0] * off[i]!.h,
     p[1] - off[i]!.n[1] * off[i]!.h,
   ]);
+  return { left, right };
+}
+
+/**
+ * 折れ線を膨らませた輪郭。開いた線は 1 つのリング、閉じた線は外側と内側の 2 つのリング（先頭が外側）を返す。
+ * 骨格の点と同じ順に並ぶので、点ごとの太さを確かめるのに使う
+ */
+export function expandPolyline(pts: Vec[], closed: boolean, w: StrokeWeights): Poly {
+  if (pts.length < 2) return [];
+  const { left, right } = offsetSides(pts, closed, w);
   if (!closed) return [[...left, ...right.reverse()]];
   return Math.abs(signedArea(left)) >= Math.abs(signedArea(right)) ? [left, right] : [right, left];
+}
+
+/**
+ * 合成に渡す形。線分ごとの帯を 2 つの三角形に分ける。1 本のリングのままだと、太い線のきついカーブで
+ * 内側のずらし線が自分と交差し、折り返した部分が穴として残るため（実装順 11 の組み合わせテストで t・s に出た）
+ */
+export function expandToTriangles(pts: Vec[], closed: boolean, w: StrokeWeights): Poly[] {
+  if (pts.length < 2) return [];
+  const { left, right } = offsetSides(pts, closed, w);
+  const n = pts.length;
+  const count = closed ? n : n - 1;
+  const out: Poly[] = [];
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % n;
+    out.push([[left[i]!, left[j]!, right[j]!]], [[left[i]!, right[j]!, right[i]!]]);
+  }
+  return out;
 }

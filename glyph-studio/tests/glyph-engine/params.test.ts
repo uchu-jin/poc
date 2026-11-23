@@ -5,14 +5,14 @@ describe('clampParams（FR-005）', () => {
   it('範囲内・下限ちょうど・上限ちょうどはそのまま', () => {
     expect(clampParams({ weight: 120 }).weight).toBe(120);
     expect(clampParams({ weight: 20 }).weight).toBe(20);
-    expect(clampParams({ weight: 200 }).weight).toBe(200);
+    expect(clampParams({ weight: 150 }).weight).toBe(150);
   });
 
   it('下限の 1 つ下・上限の 1 つ上は丸める', () => {
     expect(clampParams({ weight: 19 }).weight).toBe(20);
-    expect(clampParams({ weight: 201 }).weight).toBe(200);
+    expect(clampParams({ weight: 151 }).weight).toBe(150);
     expect(clampParams({ hWeight: 19 }).hWeight).toBe(20);
-    expect(clampParams({ hWeight: 201 }).hWeight).toBe(200);
+    expect(clampParams({ hWeight: 151 }).hWeight).toBe(150);
     expect(clampParams({ slant: -1 }).slant).toBe(0);
     expect(clampParams({ slant: 16 }).slant).toBe(15);
     expect(clampParams({ width: 0.79 }).width).toBe(0.8);
@@ -38,8 +38,8 @@ describe('clampParams（FR-005）', () => {
   });
 
   it('逆コントラスト（横線の太さ > 太さ）を許す', () => {
-    const p = clampParams({ weight: 40, hWeight: 160 });
-    expect(p).toMatchObject({ weight: 40, hWeight: 160 });
+    const p = clampParams({ weight: 40, hWeight: 150 });
+    expect(p).toMatchObject({ weight: 40, hWeight: 150 });
   });
 
   it('指定しなかった値は既定値', () => {

@@ -2,10 +2,13 @@ import type { Join, Params, Terminal } from './types';
 
 type NumericKey = 'weight' | 'hWeight' | 'width' | 'slant' | 'xHeight';
 
-/** 数値パラメータの [下限, 上限]（【要確認】初期値。組み合わせのテストで狭める。未確定事項 #4） */
+/**
+ * 数値パラメータの [下限, 上限]（未確定事項 #4）。太さ・横線の太さの上限は、組み合わせのテスト
+ * （上限・下限の 32 通り × 端と角の 6 通り × 62 字）が通る 150 まで狭めた。160 では e の尾と横線の間が閉じる
+ */
 export const PARAM_LIMITS: Record<NumericKey, [number, number]> = {
-  weight: [20, 200],
-  hWeight: [20, 200],
+  weight: [20, 150],
+  hWeight: [20, 150],
   width: [0.8, 1.25],
   slant: [0, 15],
   xHeight: [420, 580],

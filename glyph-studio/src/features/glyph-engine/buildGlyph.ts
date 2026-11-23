@@ -1,5 +1,5 @@
 // 1 文字の組み立て：検査 → x ハイト → 幅 → 折れ線 → 膨らませ＋端・角 → 傾き → 合成 → 余白と文字幅
-import { expandPolyline, strokeWidthAt } from './expand';
+import { expandToTriangles, strokeWidthAt } from './expand';
 import { flattenSegment } from './flatten';
 import { boundsOf, distToSegment, unit } from './geometry';
 import { SIDE_BEARING, SPACE_WIDTH } from './metrics';
@@ -122,52 +122,66 @@ const SLAB_ROOM_SHARE = 0.4;
 
 /**
  * スラブを左右それぞれどこまで張り出してよいか。スラブの高さの範囲にある他の線を、太さの半分だけ太らせて
- * 障害物とし、縦線の端から障害物までの空きの 4 割まで（2 本の足のスラブが向かい合ってもくっつかない）
+ * 障害物とし、縦線の端から障害物までの空きの 4 割まで（2 本の足のスラブが向かい合ってもくっつかない）。
+ * 自分の線の他の部分と、尖った角の図形も障害物に数える
  */
-function slabRoom(e: End, pieces: Piece[], w: { weight: number; hWeight: number }) {
+function slabRoom(
+  e: End,
+  pieces: Piece[],
+  joinShapes: Poly[],
+  w: { weight: number; hWeight: number },
+) {
   const out: Vec = [-e.away[0], -e.away[1]];
   const stemHalf = strokeWidthAt(out, w) / 2;
   const { thickness } = slabSize(w.weight);
   const y0 = out[1] < 0 ? e.at[1] : e.at[1] - thickness;
   const y1 = y0 + thickness;
   const hObs = Math.max(w.weight, w.hWeight) / 2;
-  const lo = y0 - hObs;
-  const hi = y1 + hObs;
+  const x = e.at[0];
   let freeL = Infinity;
   let freeR = Infinity;
+
+  /** 線分 ab を pad だけ太らせた障害物として数える。own のとき、端をまたぐ部分（端の縦線そのもの）は除く */
+  const consider = (a: Vec, b: Vec, pad: number, own: boolean) => {
+    const lo = y0 - pad;
+    const hi = y1 + pad;
+    // 線分のうち y が [lo, hi] に入る部分の x の範囲
+    let t0 = 0;
+    let t1 = 1;
+    const dy = b[1] - a[1];
+    if (dy === 0) {
+      if (a[1] < lo || a[1] > hi) return;
+    } else {
+      const ta = (lo - a[1]) / dy;
+      const tb = (hi - a[1]) / dy;
+      t0 = Math.max(0, Math.min(ta, tb));
+      t1 = Math.min(1, Math.max(ta, tb));
+      if (t0 > t1) return;
+    }
+    const xa = a[0] + (b[0] - a[0]) * t0;
+    const xb = a[0] + (b[0] - a[0]) * t1;
+    const minX = Math.min(xa, xb) - pad;
+    const maxX = Math.max(xa, xb) + pad;
+    if (maxX <= x) freeL = Math.min(freeL, x - stemHalf - maxX);
+    else if (minX >= x) freeR = Math.min(freeR, minX - (x + stemHalf));
+    else if (!own) {
+      freeL = 0;
+      freeR = 0;
+    }
+  };
+
+  // 骨格の線（自分の線の他の部分も数える。U のように 1 本の線の両端が向かい合うため）
   pieces.forEach((pc, j) => {
-    if (j === e.piece) return;
     const pts = pc.pts;
     const m = pc.closed ? pts.length : pts.length - 1;
-    for (let i = 0; i < m; i++) {
-      const a = pts[i]!;
-      const b = pts[(i + 1) % pts.length]!;
-      // 線分のうち y が [lo, hi] に入る部分の x の範囲
-      let t0 = 0;
-      let t1 = 1;
-      const dy = b[1] - a[1];
-      if (dy === 0) {
-        if (a[1] < lo || a[1] > hi) continue;
-      } else {
-        const ta = (lo - a[1]) / dy;
-        const tb = (hi - a[1]) / dy;
-        t0 = Math.max(0, Math.min(ta, tb));
-        t1 = Math.min(1, Math.max(ta, tb));
-        if (t0 > t1) continue;
-      }
-      const xa = a[0] + (b[0] - a[0]) * t0;
-      const xb = a[0] + (b[0] - a[0]) * t1;
-      const minX = Math.min(xa, xb) - hObs;
-      const maxX = Math.max(xa, xb) + hObs;
-      const x = e.at[0];
-      if (maxX <= x) freeL = Math.min(freeL, x - stemHalf - maxX);
-      else if (minX >= x) freeR = Math.min(freeR, minX - (x + stemHalf));
-      else {
-        freeL = 0;
-        freeR = 0;
-      }
-    }
+    for (let i = 0; i < m; i++) consider(pts[i]!, pts[(i + 1) % pts.length]!, hObs, j === e.piece);
   });
+  // 尖った角の図形（M・w の頂点の先端がスラブに届かないように）
+  for (const poly of joinShapes)
+    for (const ring of poly)
+      for (let i = 0; i < ring.length; i++)
+        consider(ring[i]!, ring[(i + 1) % ring.length]!, 0, false);
+
   const room = (free: number) => stemHalf + Math.max(0, free) * SLAB_ROOM_SHARE;
   return { left: room(freeL), right: room(freeR) };
 }
@@ -175,7 +189,7 @@ function slabRoom(e: End, pieces: Piece[], w: { weight: number; hWeight: number 
 function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
   const pieces = piecesOf(skeleton);
   const w = { weight: p.weight, hWeight: p.hWeight };
-  const polys: Poly[] = pieces.map((pc) => expandPolyline(pc.pts, pc.closed, w));
+  const polys: Poly[] = pieces.flatMap((pc) => expandToTriangles(pc.pts, pc.closed, w));
 
   // 開いた線の両端。away は端から線に沿って離れる向き
   const ends: End[] = [];
@@ -194,6 +208,8 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
   });
 
   const used = new Set<number>();
+  const joinShapes: Poly[] = [];
+  const freeEnds: End[] = [];
   ends.forEach((e, i) => {
     if (used.has(i)) return;
     const group = [i];
@@ -205,7 +221,7 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
       // 線どうしがつながる点 → 角
       const half = (x: End) => strokeWidthAt(x.away, w) / 2;
       if (p.join === 'round') {
-        polys.push(
+        joinShapes.push(
           ...joinPolys(
             e.at,
             e.away,
@@ -221,16 +237,21 @@ function shapesOf(skeleton: Skeleton, p: Params): Poly[] {
         for (let b = a + 1; b < group.length; b++) {
           const x = ends[group[a]!]!;
           const y = ends[group[b]!]!;
-          polys.push(...joinPolys(x.at, x.away, half(x), y.away, half(y), 'miter'));
+          joinShapes.push(...joinPolys(x.at, x.away, half(x), y.away, half(y), 'miter'));
         }
       return;
     }
     // 他の線の上にある端（横棒の端など）には何も足さない
     if (onOtherPiece(e.at, e.piece, pieces)) return;
-    const out: Vec = [-e.away[0], -e.away[1]];
-    const room = p.terminal === 'slab' ? slabRoom(e, pieces, w) : undefined;
-    polys.push(...capPolys(e.at, out, w, p.terminal, e.isLine, room));
+    freeEnds.push(e);
   });
+  polys.push(...joinShapes);
+  // 自由な端の形。スラブは、線と尖った角の図形を避けて張り出す
+  for (const e of freeEnds) {
+    const out: Vec = [-e.away[0], -e.away[1]];
+    const room = p.terminal === 'slab' ? slabRoom(e, pieces, joinShapes, w) : undefined;
+    polys.push(...capPolys(e.at, out, w, p.terminal, e.isLine, room));
+  }
   return polys;
 }
 

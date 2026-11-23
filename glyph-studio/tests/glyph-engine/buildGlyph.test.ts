@@ -177,7 +177,7 @@ describe('buildGlyph（仮の骨格）', () => {
 
   it('範囲外のパラメータは上限・下限に丸めて組み立てる', () => {
     const over = buildGlyph('I', { ...P(), weight: 500, hWeight: 500 }, { skeleton: I });
-    const max = build('I', I, { weight: 200, hWeight: 200 });
+    const max = build('I', I, { weight: 150, hWeight: 150 });
     expect(okOf(over).outline).toEqual(max.outline);
   });
 

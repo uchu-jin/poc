@@ -25,8 +25,8 @@ const VARIANTS: Variant[] = [
     params: { ...DEFAULT_PARAMS, weight: 120, hWeight: 40 },
   },
   {
-    label: '逆コントラスト（太さ 40・横線 160）',
-    params: { ...DEFAULT_PARAMS, weight: 40, hWeight: 160 },
+    label: '逆コントラスト（太さ 40・横線 150）',
+    params: { ...DEFAULT_PARAMS, weight: 40, hWeight: 150 },
   },
   { label: '丸い端・丸い角', params: { ...DEFAULT_PARAMS, terminal: 'round', join: 'round' } },
   { label: 'スラブ・尖った角', params: { ...DEFAULT_PARAMS, terminal: 'slab' } },

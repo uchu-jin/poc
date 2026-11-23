@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { expandPolyline, strokeWidthAt } from '../../src/features/glyph-engine/expand';
+import {
+  expandPolyline,
+  expandToTriangles,
+  strokeWidthAt,
+} from '../../src/features/glyph-engine/expand';
+import { unionPolys } from '../../src/features/glyph-engine/union';
 import { flattenStroke } from '../../src/features/glyph-engine/flatten';
-import { signedArea } from '../../src/features/glyph-engine/geometry';
+import { holeCount, signedArea } from '../../src/features/glyph-engine/geometry';
 import type { Stroke, Vec } from '../../src/features/glyph-engine/types';
 
 const W = { weight: 120, hWeight: 40 };
@@ -91,5 +96,34 @@ describe('expandPolyline', () => {
     expect(at([0, -300])).toBeCloseTo(40, 0);
     expect(at([300, 0])).toBeCloseTo(120, 0);
     expect(at([-300, 0])).toBeCloseTo(120, 0);
+  });
+});
+
+describe('expandToTriangles', () => {
+  // 半径 30 の U ターン（太さ 120 なので、内側のずらし線は自分と交差する）
+  const uturn: Vec[] = [
+    [-30, 300],
+    [-30, 0],
+    ...Array.from({ length: 15 }, (_, i) => {
+      const a = Math.PI + (Math.PI * (i + 1)) / 16;
+      return [30 * Math.cos(a), 30 * Math.sin(a)] as Vec;
+    }),
+    [30, 0],
+    [30, 300],
+  ];
+  const w = { weight: 120, hWeight: 120 };
+
+  it('三角形に分けて合成すると、U ターンも 1 つの輪郭で穴がない', () => {
+    const r = unionPolys(expandToTriangles(uturn, false, w));
+    expect(r.ok && r.outline.length).toBe(1);
+    expect(r.ok && holeCount(r.outline)).toBe(0);
+  });
+
+  it('すべて三角形で、線分 1 本につき 2 つ（閉じた線は最後と最初をつなぐ分も）', () => {
+    const open = expandToTriangles(uturn, false, w);
+    expect(open).toHaveLength((uturn.length - 1) * 2);
+    for (const poly of open) expect(poly[0]).toHaveLength(3);
+    const closed = expandToTriangles(uturn, true, w);
+    expect(closed).toHaveLength(uturn.length * 2);
   });
 });

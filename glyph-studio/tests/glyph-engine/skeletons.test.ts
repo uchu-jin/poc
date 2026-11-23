@@ -79,10 +79,29 @@ describe('スラブは空いている幅に縮める（2026-11-23 作者が決�
     );
   });
 
-  it('H の 2 本の足のスラブは、太さ 200 でもくっつかない', () => {
-    const h = okOf(buildGlyph('H', P({ weight: 200, hWeight: 200, terminal: 'slab' })), 'H');
+  it('1 本の線の両端が向かい合う U でも、上の 2 つのスラブはくっつかない（幅 0.8・太さ 140）', () => {
+    const u = okOf(
+      buildGlyph('U', P({ weight: 140, hWeight: 140, width: 0.8, terminal: 'slab' })),
+      'U',
+    );
+    expect(crossSection(u.outline, 695)).toHaveLength(2);
+    expect(holeCount(u.outline)).toBe(0);
+  });
+
+  it('H の 2 本の足のスラブは、太さの上限 150 でもくっつかない', () => {
+    const h = okOf(buildGlyph('H', P({ weight: 150, hWeight: 150, terminal: 'slab' })), 'H');
     expect(crossSection(h.outline, 5)).toHaveLength(2);
     expect(holeCount(h.outline)).toBe(0);
+  });
+});
+
+describe('きついカーブの内側に小さな穴を作らない（膨らませを三角形に分ける）', () => {
+  it.each([
+    ['t', { weight: 140, hWeight: 140, width: 1.25, xHeight: 420 }],
+    ['s', { weight: 140, hWeight: 140, width: 0.8, slant: 15, xHeight: 420 }],
+  ] as const)('%s（実装順 11 の組み合わせテストで見つかった条件）は穴が 0', (ch, p) => {
+    const r = okOf(buildGlyph(ch, P(p)), ch);
+    expect(holeCount(r.outline)).toBe(0);
   });
 });
 
@@ -102,8 +121,8 @@ describe('全文字に同じ値が効く（FR-007、ストーリー2 シナリ�
 });
 
 describe('逆コントラスト（作者が「許す」と決定）', () => {
-  it('太さ 40・横線の太さ 160：H の横棒が 160、縦線が 40 で、62 字すべて成功', () => {
-    const p = P({ weight: 40, hWeight: 160 });
+  it('太さ 40・横線の太さ 150（上限）：H の横棒が 150、縦線が 40 で、62 字すべて成功', () => {
+    const p = P({ weight: 40, hWeight: 150 });
     const all = buildGlyphs(p);
     for (const ch of GLYPH_CHARS) okOf(all[ch], ch);
     const h = okOf(all.H, 'H');
@@ -114,7 +133,7 @@ describe('逆コントラスト（作者が「許す」と決定）', () => {
     const swapped = h.outline.map((r) => r.map(([x, y]) => [y, x] as [number, number]));
     const bars = crossSection(swapped, midX);
     expect(bars).toHaveLength(1);
-    expect(bars[0]![1] - bars[0]![0]).toBeCloseTo(160, 0);
+    expect(bars[0]![1] - bars[0]![0]).toBeCloseTo(150, 0);
   });
 });
 
