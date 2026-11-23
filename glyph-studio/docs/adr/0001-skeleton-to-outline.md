@@ -367,3 +367,7 @@
 - 再検討する条件：自前の膨らませで継ぎ目・端の作り込みが手に負えなくなったとき。ArcTolerance を緩めて速さを測り直す（V-10 では未試行）
 
 ## 6. 実装箇所
+
+- `glyph-studio/src/features/glyph-engine/expand.ts` - 骨格の折れ線を自前のコードで膨らませる（線の向きで太さを変える。FR-020）
+- `glyph-studio/src/features/glyph-engine/terminals.ts` - 端（丸・スラブ）と角（miter／bevel・丸）の図形を足す
+- `glyph-studio/src/features/glyph-engine/union.ts` - clipper-lib で合成（座標 10 倍の整数、NonZero、向きを揃える、渡す配列は毎回作り直す）
