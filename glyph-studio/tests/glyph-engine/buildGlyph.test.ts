@@ -188,7 +188,21 @@ describe('buildGlyph（仮の骨格）', () => {
       outline: [],
       advanceWidth: SPACE_WIDTH,
       bounds: null,
+      shiftX: 0,
     });
+  });
+});
+
+describe('shiftX（輪郭を余白に合わせて横にずらした量。プラン a-editor）', () => {
+  // 既定の A の輪郭の左端は、左の足の外側の角：x ＝ 50 − 太さの半分 × 斜線の縦成分（610 ÷ √(250² ＋ 610²)）
+  const ty = 610 / Math.hypot(250, 610);
+  it.each([
+    [90, 60 - (50 - 45 * ty)],
+    [20, 60 - (50 - 10 * ty)],
+  ])('既定の A・太さ %s → shiftX は約 %f（輪郭の左端は余白 60）', (w, expected) => {
+    const r = okOf(buildGlyph('A', P({ weight: w, hWeight: w })));
+    expect(r.shiftX).toBeCloseTo(expected, 0);
+    expect(r.bounds!.minX).toBeCloseTo(SIDE_BEARING, 6);
   });
 });
 

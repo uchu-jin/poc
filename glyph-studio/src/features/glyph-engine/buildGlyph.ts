@@ -34,7 +34,8 @@ export function buildGlyph(ch: string, params: Params, options: BuildOptions = {
 }
 
 function buildGlyphUnsafe(ch: string, params: Params, options: BuildOptions): BuildResult {
-  if (ch === ' ') return { ok: true, outline: [], advanceWidth: SPACE_WIDTH, bounds: null };
+  if (ch === ' ')
+    return { ok: true, outline: [], advanceWidth: SPACE_WIDTH, bounds: null, shiftX: 0 };
   const source = options.skeleton !== undefined ? options.skeleton : DEFAULT_SKELETONS[ch];
   if (source === undefined)
     return { ok: false, reason: 'invalid-skeleton', message: `「${ch}」の骨格がない` };
@@ -67,5 +68,6 @@ function buildGlyphUnsafe(ch: string, params: Params, options: BuildOptions): Bu
     outline,
     advanceWidth: round1(bounds.maxX - bounds.minX + SIDE_BEARING * 2),
     bounds,
+    shiftX: dx,
   };
 }
