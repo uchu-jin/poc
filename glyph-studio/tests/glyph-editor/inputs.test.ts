@@ -29,18 +29,26 @@ describe('shouldHandleShortcut', () => {
     metaKey: false,
     ctrlKey: false,
     shiftKey: false,
+    altKey: false,
+    repeat: false,
+    isComposing: false,
     ...mod,
   });
+  const el = (tag: string, type?: string) => ({ tag, type, isContentEditable: false });
   it('⌘Z・Ctrl+Z → 取り消し、⌘⇧Z・Ctrl+Shift+Z → やり直し（大文字の Z でも）', () => {
-    expect(shouldHandleShortcut(k('z', { metaKey: true }), 'svg')).toBe('undo');
-    expect(shouldHandleShortcut(k('z', { ctrlKey: true }), 'body')).toBe('undo');
-    expect(shouldHandleShortcut(k('z', { metaKey: true, shiftKey: true }), 'body')).toBe('redo');
-    expect(shouldHandleShortcut(k('Z', { ctrlKey: true, shiftKey: true }), 'body')).toBe('redo');
+    expect(shouldHandleShortcut(k('z', { metaKey: true }), el('svg'))).toBe('undo');
+    expect(shouldHandleShortcut(k('z', { ctrlKey: true }), el('body'))).toBe('undo');
+    expect(shouldHandleShortcut(k('z', { metaKey: true, shiftKey: true }), el('body'))).toBe(
+      'redo',
+    );
+    expect(shouldHandleShortcut(k('Z', { ctrlKey: true, shiftKey: true }), el('body'))).toBe(
+      'redo',
+    );
   });
-  it('修飾キーのない z・Z 以外・入力欄にフォーカス → 何もしない', () => {
-    expect(shouldHandleShortcut(k('z'), 'body')).toBeNull();
-    expect(shouldHandleShortcut(k('y', { metaKey: true }), 'body')).toBeNull();
-    expect(shouldHandleShortcut(k('z', { metaKey: true }), 'INPUT')).toBeNull();
-    expect(shouldHandleShortcut(k('z', { ctrlKey: true }), 'textarea')).toBeNull();
+  it('修飾キーのない z・Z 以外・文字を打つ入力欄にフォーカス → 何もしない', () => {
+    expect(shouldHandleShortcut(k('z'), el('body'))).toBeNull();
+    expect(shouldHandleShortcut(k('y', { metaKey: true }), el('body'))).toBeNull();
+    expect(shouldHandleShortcut(k('z', { metaKey: true }), el('INPUT', 'text'))).toBeNull();
+    expect(shouldHandleShortcut(k('z', { ctrlKey: true }), el('textarea'))).toBeNull();
   });
 });

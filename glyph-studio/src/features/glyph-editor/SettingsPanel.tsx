@@ -78,6 +78,7 @@ export default function SettingsPanel({
           }
           onPointerUp={commitSlider}
           onKeyUp={commitSlider}
+          onBlur={commitSlider}
         />
         <input
           type="text"
@@ -93,7 +94,9 @@ export default function SettingsPanel({
           onChange={(e) => setXText(e.target.value)}
           onBlur={commitText}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            // 日本語入力の変換を確定する Enter では、欄を確定しない（実装レビュー P1）
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing)
+              (e.target as HTMLInputElement).blur();
           }}
         />
       </fieldset>

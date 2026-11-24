@@ -3,7 +3,7 @@
 const noNegZero = (x: number) => (x === 0 ? 0 : x);
 
 /**
- * 値をグリッド刻みに丸める。候補は「範囲の中の刻みの値」と「上限・下限ちょうど」で、いちばん近いものを選ぶ。
+ * 値をグリッド刻みに丸める。候補は「範囲の中の刻みの値」と「上限・下限ちょうど」で、いちばん近いものを選ぶ（ちょうど半分は大きい側）。
  * 吸着が OFF のときは 1 刻み。数値でない値は下限にする
  */
 export function snapValue(
@@ -20,7 +20,12 @@ export function snapValue(
     (x) => x >= min && x <= max,
   );
   let best = candidates[0]!;
-  for (const x of candidates) if (Math.abs(x - c) < Math.abs(best - c)) best = x;
+  for (const x of candidates) {
+    const d = Math.abs(x - c);
+    const bd = Math.abs(best - c);
+    // ちょうど半分は大きい側（snapDistance の「0 から遠い側」とそろえる）
+    if (d < bd || (d === bd && x > best)) best = x;
+  }
   return best;
 }
 

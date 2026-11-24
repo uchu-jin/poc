@@ -6,6 +6,7 @@ import { canRedo, canUndo } from './history';
 import { shouldHandleShortcut } from './inputs';
 import SampleLine from './SampleLine';
 import SettingsPanel from './SettingsPanel';
+import './editor.css';
 
 export default function EditorPage({
   state,
@@ -14,11 +15,16 @@ export default function EditorPage({
   state: EditorState;
   dispatch: Dispatch<EditorAction>;
 }) {
-  // ⌘Z・⌘⇧Z（Ctrl も）。入力欄にフォーカスがあるときは受けない（FR-021）
+  // ⌘Z・⌘⇧Z（Ctrl も）。文字を打つ欄にフォーカスがあるとき・変換中・押し続けは受けない（FR-021）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const tag = document.activeElement?.tagName ?? 'body';
-      const action = shouldHandleShortcut(e, tag);
+      const el = document.activeElement;
+      const focused = {
+        tag: el?.tagName ?? 'BODY',
+        type: el instanceof HTMLInputElement ? el.type : undefined,
+        isContentEditable: el instanceof HTMLElement && el.isContentEditable,
+      };
+      const action = shouldHandleShortcut(e, focused);
       if (!action) return;
       e.preventDefault();
       dispatch({ type: action });

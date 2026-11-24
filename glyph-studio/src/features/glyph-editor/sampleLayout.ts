@@ -2,8 +2,16 @@
 import type { BuildResult } from '../glyph-engine/types';
 
 export const SAMPLE_TEXT = 'Hamburgefontsiv 0123';
+/** 組めなかった文字に取る幅（詰めずに、失敗の印を出す場所を空ける） */
+export const MISSING_GLYPH_WIDTH = 500;
 
-export type SampleItem = { ch: string; x: number; result: BuildResult };
+export type SampleItem = {
+  ch: string;
+  x: number;
+  width: number;
+  missing: boolean;
+  result: BuildResult;
+};
 
 export function sampleLayout(
   text: string,
@@ -13,8 +21,9 @@ export function sampleLayout(
   let x = 0;
   for (const ch of text) {
     const result = build(ch);
-    items.push({ ch, x, result });
-    x += result.ok ? result.advanceWidth : 0;
+    const width = result.ok ? result.advanceWidth : MISSING_GLYPH_WIDTH;
+    items.push({ ch, x, width, missing: !result.ok, result });
+    x += width;
   }
   return { items, width: x };
 }

@@ -3,6 +3,7 @@ import { buildGlyph } from '../glyph-engine/buildGlyph';
 import { strokeWidthAt } from '../glyph-engine/expand';
 import { PARAM_LIMITS } from '../glyph-engine/params';
 import type { Params, Vec } from '../glyph-engine/types';
+import type { MakeClipper } from '../glyph-engine/union';
 import { snapDistance, snapValue } from './snap';
 
 export type HandleId = 'weight' | 'hWeight' | 'width' | 'slant';
@@ -18,19 +19,32 @@ const BAR_CENTER_X = (132 + 468) / 2;
 const WEIGHT_Y = APEX[1] / 2;
 /** 骨格の左右の足の間隔 */
 const FOOT_SPAN = RIGHT_FOOT[0] - LEFT_FOOT[0];
+/** 二分探索の回数。範囲 130 を 2^12 で割って約 0.03（1 刻みに丸めるのに十分） */
+const SOLVE_STEPS = 12;
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 const deg = (r: number) => (r * 180) / Math.PI;
 const clamp = (v: number, [min, max]: [number, number]) => Math.min(max, Math.max(min, v));
+/** 浮動小数の端数を落とす（往復で 0 に戻る、1.1 ＋ 0.05 が 1.15 になる。実装レビュー P2） */
+const tidy = (v: number, digits: number) => {
+  const k = 10 ** digits;
+  const r = Math.round(v * k) / k;
+  return r === 0 ? 0 : r;
+};
+/** 頂点の横のずれ（610 × tan 傾き）。端数を落としてから使う */
+const slantOffset = (p: Params) => tidy(APEX[1] * Math.tan(rad(p.slant)), 9);
+const slantFromOffset = (offset: number) =>
+  clamp(tidy(deg(Math.atan(offset / APEX[1])), 12), PARAM_LIMITS.slant);
+const tidyWidth = (w: number) => clamp(tidy(w, 6), PARAM_LIMITS.width);
 
 /** buildGlyph と同じ順番：幅の拡大 → 傾き → shiftX */
 function place([x, y]: Vec, p: Params, shiftX: number): Vec {
   return [x * p.width + y * Math.tan(rad(p.slant)) + shiftX, y];
 }
 
-/** パラメータ p の A の shiftX（組めなければ 0） */
-export function shiftXOf(p: Params): number {
-  const r = buildGlyph('A', p);
+/** パラメータ p の A の shiftX（組めなければ 0）。makeClipper は画面の状態と同じものを使う */
+export function shiftXOf(p: Params, makeClipper?: MakeClipper): number {
+  const r = buildGlyph('A', p, { makeClipper });
   return r.ok ? r.shiftX : 0;
 }
 
@@ -56,22 +70,21 @@ export function handlePosition(id: HandleId, p: Params, shiftX: number): Vec {
   }
 }
 
-/** 表示用の値（太さ・横線の太さは単位、幅は倍率、傾きは度） */
-export function handleValue(id: HandleId, p: Params): number {
-  return p[id];
-}
-
-/** 太さのハンドルの横の位置（shiftX 込み） */
-const weightHandleX = (p: Params) => handlePosition('weight', p, shiftXOf(p))[0];
-
-/** カーソルの横の位置 targetX にハンドルが来る太さを、上限・下限の間で二分探索する（20 回） */
-function solveWeight(from: Params, targetX: number): number {
+/**
+ * カーソルの横の位置 targetX にハンドルが来る太さを、上限・下限の間で二分探索する。
+ * 位置は shiftX 込みで A を組んで求める（1 回の移動で A を約 15 回組む）
+ */
+function solveWeight(from: Params, targetX: number, makeClipper?: MakeClipper): number {
+  const xAt = (weight: number) => {
+    const p = { ...from, weight };
+    return handlePosition('weight', p, shiftXOf(p, makeClipper))[0];
+  };
   let [lo, hi] = PARAM_LIMITS.weight;
-  if (targetX <= weightHandleX({ ...from, weight: lo })) return lo;
-  if (targetX >= weightHandleX({ ...from, weight: hi })) return hi;
-  for (let i = 0; i < 20; i++) {
+  if (targetX <= xAt(lo)) return lo;
+  if (targetX >= xAt(hi)) return hi;
+  for (let i = 0; i < SOLVE_STEPS; i++) {
     const mid = (lo + hi) / 2;
-    if (weightHandleX({ ...from, weight: mid }) < targetX) lo = mid;
+    if (xAt(mid) < targetX) lo = mid;
     else hi = mid;
   }
   return (lo + hi) / 2;
@@ -87,12 +100,14 @@ export function dragTo(
   [dx, dy]: Vec,
   grid: number,
   snap: boolean,
+  makeClipper?: MakeClipper,
 ): Params {
   if (dx === 0 && dy === 0) return from;
   switch (id) {
     case 'weight': {
       const [min, max] = PARAM_LIMITS.weight;
-      const w = solveWeight(from, weightHandleX(from) + dx);
+      const startX = handlePosition('weight', from, shiftXOf(from, makeClipper))[0];
+      const w = solveWeight(from, startX + dx, makeClipper);
       return { ...from, weight: snapValue(w, grid, min, max, snap) };
     }
     case 'hWeight': {
@@ -100,14 +115,9 @@ export function dragTo(
       return { ...from, hWeight: snapValue(from.hWeight + 2 * dy, grid, min, max, snap) };
     }
     case 'width':
-      return {
-        ...from,
-        width: clamp(from.width + snapDistance(dx, grid, snap) / FOOT_SPAN, PARAM_LIMITS.width),
-      };
-    case 'slant': {
-      const offset = APEX[1] * Math.tan(rad(from.slant)) + snapDistance(dx, grid, snap);
-      return { ...from, slant: clamp(deg(Math.atan(offset / APEX[1])), PARAM_LIMITS.slant) };
-    }
+      return { ...from, width: tidyWidth(from.width + snapDistance(dx, grid, snap) / FOOT_SPAN) };
+    case 'slant':
+      return { ...from, slant: slantFromOffset(slantOffset(from) + snapDistance(dx, grid, snap)) };
   }
 }
 
@@ -127,10 +137,8 @@ export function keyStep(id: HandleId, key: string, p: Params, grid: number, snap
     case 'hWeight':
       return { ...p, hWeight: clamp(p.hWeight + step, PARAM_LIMITS.hWeight) };
     case 'width':
-      return { ...p, width: clamp(p.width + step / FOOT_SPAN, PARAM_LIMITS.width) };
-    case 'slant': {
-      const offset = APEX[1] * Math.tan(rad(p.slant)) + step;
-      return { ...p, slant: clamp(deg(Math.atan(offset / APEX[1])), PARAM_LIMITS.slant) };
-    }
+      return { ...p, width: tidyWidth(p.width + step / FOOT_SPAN) };
+    case 'slant':
+      return { ...p, slant: slantFromOffset(slantOffset(p) + step) };
   }
 }

@@ -24,6 +24,17 @@ export const HANDLE_LABELS: Record<HandleId, string> = {
   slant: '傾き',
 };
 
+/**
+ * 値の表示の位置（ハンドルからのずれ。SVG の座標で y は下向き）。隣のハンドルに重ならない向きに出す
+ * （横線の太さは左、幅は下。実装レビュー P2）
+ */
+const LABEL_OFFSET: Record<HandleId, [number, number]> = {
+  weight: [28, -24],
+  hWeight: [-28, -24],
+  width: [28, 56],
+  slant: [28, -24],
+};
+
 export function formatValue(id: HandleId | 'xHeight', v: number): string {
   if (id === 'width') return v.toFixed(2);
   if (id === 'slant') return `${v.toFixed(1)}°`;
@@ -92,16 +103,19 @@ export default function GlyphCanvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const frame = useRef<number | null>(null);
   const latest = useRef<Vec | null>(null);
-  const dragging = useRef(false);
+  /** ドラッグ中のポインターの ID（2 本目のポインターは無視する。実装レビュー P1） */
+  const dragging = useRef<number | null>(null);
   const [focused, setFocused] = useState<HandleId | null>(null);
   const { live, view } = state;
 
   // 画面を閉じたときは、予約した描き直しを取り消す
+  // ドラッグ中に #preview へ移ったときは、ドラッグも取り消す（状態は App にあるので残ってしまう）
   useEffect(
     () => () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current);
+      if (dragging.current !== null) dispatch({ type: 'dragCancel' });
     },
-    [],
+    [dispatch],
   );
 
   /** 画面の座標 → 1000 単位（y 上向き） */
@@ -120,17 +134,19 @@ export default function GlyphCanvas({
   };
 
   const onHandleDown = (id: HandleId) => (e: ReactPointerEvent) => {
+    // 左ボタン（タッチ・ペンは 0）だけ。ドラッグ中の 2 本目は無視する
+    if (e.button !== 0 || dragging.current !== null) return;
     const at = toFont(e);
     if (!at) return;
     e.preventDefault();
     svgRef.current?.setPointerCapture(e.pointerId);
-    dragging.current = true;
+    dragging.current = e.pointerId;
     latest.current = null;
     dispatch({ type: 'dragStart', handle: id, at });
   };
 
   const onMove = (e: ReactPointerEvent) => {
-    if (!dragging.current) return;
+    if (dragging.current !== e.pointerId) return;
     latest.current = toFont(e);
     // pointermove が速く来ても、描き直しは 1 フレーム 1 回にまとめる
     if (frame.current === null)
@@ -141,20 +157,20 @@ export default function GlyphCanvas({
   };
 
   const onUp = (e: ReactPointerEvent) => {
-    if (!dragging.current) return;
+    if (dragging.current !== e.pointerId) return;
     flush();
-    dragging.current = false;
+    dragging.current = null;
     dispatch({ type: 'dragEnd' });
     if (svgRef.current?.hasPointerCapture(e.pointerId))
       svgRef.current.releasePointerCapture(e.pointerId);
   };
 
   // 途中で切れたとき（pointercancel・lostpointercapture）は、ドラッグ前の値に戻す
-  const onCancel = () => {
-    if (!dragging.current) return;
+  const onCancel = (e: ReactPointerEvent) => {
+    if (dragging.current !== e.pointerId) return;
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
-    dragging.current = false;
+    dragging.current = null;
     dispatch({ type: 'dragCancel' });
   };
 
@@ -206,7 +222,12 @@ export default function GlyphCanvas({
           (() => {
             const [x, y] = handlePosition(active, live, view.shiftX);
             return (
-              <text className="handle-value" x={x + 28} y={-y - 24}>
+              <text
+                className="handle-value"
+                x={x + LABEL_OFFSET[active][0]}
+                y={-y + LABEL_OFFSET[active][1]}
+                textAnchor={LABEL_OFFSET[active][0] < 0 ? 'end' : 'start'}
+              >
                 {HANDLE_LABELS[active]} {formatValue(active, live[active])}
               </text>
             );

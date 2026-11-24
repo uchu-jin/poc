@@ -5,6 +5,7 @@ import { buildGlyphs } from '../glyph-engine/buildGlyphs';
 import { holeCount } from '../glyph-engine/geometry';
 import { DEFAULT_PARAMS, PARAM_LIMITS } from '../glyph-engine/params';
 import { EXPECTED_HOLES, GLYPH_CHARS } from '../glyph-engine/skeletons';
+import './preview.css';
 import type { BuildResult, Outline, Params } from '../glyph-engine/types';
 
 type Variant = { label: string; params: Params };

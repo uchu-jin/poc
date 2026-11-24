@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import EditorPage from './features/glyph-editor/EditorPage';
 import { useEditorState } from './features/glyph-editor/useEditorState';
 import PreviewPage from './features/glyph-preview/PreviewPage';
+import { routeOf } from './route';
 
 const currentHash = () => window.location.hash;
 
@@ -15,7 +16,7 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onChange);
   }, []);
 
-  if (hash === '#preview')
+  if (routeOf(hash) === 'preview')
     return (
       <>
         <nav className="back">

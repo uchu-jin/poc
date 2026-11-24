@@ -1,0 +1,289 @@
+/* ---- A の変形画面 ---- */
+:root {
+  --accent: #2f6fde;
+  --accent-soft: rgba(47, 111, 222, 0.18);
+  --grid: #ecece6;
+  --grid-major: #d9d9d2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #7aa7ff;
+    --accent-soft: rgba(122, 167, 255, 0.22);
+    --grid: #24241f;
+    --grid-major: #34342e;
+  }
+}
+
+.editor {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.editor__header h1 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar button,
+.segmented button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--cell);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.toolbar a {
+  color: var(--accent);
+}
+
+.editor__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .editor__main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.canvas {
+  position: relative;
+  background: var(--cell);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.canvas svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  touch-action: none;
+  user-select: none;
+}
+
+.canvas .grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.canvas .grid--major {
+  stroke: var(--grid-major);
+  stroke-width: 1.5;
+}
+
+.canvas .guide-line {
+  stroke: var(--guide);
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+}
+
+.canvas .guide-label {
+  fill: var(--muted);
+  font-size: 22px;
+  transform: scaleY(1);
+}
+
+.canvas .glyph {
+  fill: var(--fg);
+  fill-opacity: 0.88;
+}
+
+.handle {
+  cursor: grab;
+  outline: none;
+}
+
+.handle circle {
+  fill: var(--cell);
+  stroke: var(--accent);
+  stroke-width: 5;
+}
+
+.handle--active circle,
+.handle:focus-visible circle {
+  fill: var(--accent);
+  stroke: var(--accent-soft);
+  stroke-width: 14;
+}
+
+.handle-value {
+  fill: var(--accent);
+  font-size: 30px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--cell);
+  stroke-width: 6px;
+}
+
+.canvas__error {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--fail-bg);
+  color: var(--fail);
+  font-size: 0.85rem;
+}
+
+.sample {
+  margin: 12px 0 0;
+  background: var(--cell);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 16px 8px;
+}
+
+.sample svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 96px;
+  fill: var(--fg);
+}
+
+.sample figcaption,
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.hint {
+  margin: 8px 0 0;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings fieldset {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--cell);
+  padding: 8px 12px 12px;
+}
+
+.settings legend {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.segmented label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.settings input[type='range'] {
+  width: 100%;
+}
+
+.settings .number {
+  width: 6em;
+  font: inherit;
+  margin-top: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.values {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.values div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.values dt {
+  color: var(--muted);
+}
+
+.values dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample__missing {
+  fill: none;
+  stroke: var(--fail);
+  stroke-width: 24;
+  stroke-dasharray: 40 30;
+}
+
+.sample__error {
+  margin-left: 8px;
+  color: var(--fail);
+}
+
+.back {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+}
+
+.back a {
+  color: var(--accent);
+}
