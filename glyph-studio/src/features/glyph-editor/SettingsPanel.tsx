@@ -3,7 +3,7 @@ import { useState, type Dispatch } from 'react';
 import { PARAM_LIMITS } from '../glyph-engine/params';
 import type { Join, Terminal } from '../glyph-engine/types';
 import type { EditorAction, EditorState, GridSize } from './editorReducer';
-import { formatValue, HANDLE_LABELS } from './GlyphCanvas';
+import { formatValue, HANDLE_LABELS } from './labels';
 import { HANDLE_IDS } from './handles';
 
 const GRIDS: GridSize[] = [10, 25, 50];

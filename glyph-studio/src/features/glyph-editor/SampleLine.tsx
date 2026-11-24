@@ -2,7 +2,7 @@
 import { useDeferredValue, useMemo } from 'react';
 import { buildGlyph } from '../glyph-engine/buildGlyph';
 import type { Params } from '../glyph-engine/types';
-import { outlinePath } from './GlyphCanvas';
+import { outlinePath } from './svgPath';
 import { SAMPLE_TEXT, sampleLayout } from './sampleLayout';
 
 export default function SampleLine({ params }: { params: Params }) {
