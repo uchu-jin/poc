@@ -1,0 +1,24 @@
+// Cloudflare Workers の設定（signal.sorano-design.com）。
+// main ブランチに push すると、Cloudflare が npm run build → npx wrangler deploy を実行して公開する。
+// 画面（dist/）は静的ファイルとして配信し、/api/ だけ Worker（worker/index.ts）が受ける。
+{
+  "name": "signal",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // /api/ だけ Worker を通す（それ以外の静的ファイルの配信は無料プランでも回数無制限）
+    "run_worker_first": ["/api/*"],
+  },
+  "kv_namespaces": [
+    {
+      // 同期コードごとの保存先。Cloudflare ダッシュボードの「Storage & Databases」→「KV」で作った ID
+      "binding": "SYNC",
+      "id": "d2208f28c67d43dbade464a6e04c6ee9",
+    },
+  ],
+  "routes": [{ "pattern": "signal.sorano-design.com", "custom_domain": true }],
+  // workers.dev の URL では公開しない（signal.sorano-design.com だけにする）
+  "workers_dev": false,
+}

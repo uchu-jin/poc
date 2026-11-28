@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <item>
+      <title>First</title>
+      <link>https://example.jp/1</link>
+      <media:content url="https://example.jp/a.png?fit=1999%2C1139&ssl=1" medium="image" />
+    </item>
+    <item>
+      <title>Second &copy; Q&A &#169;</title>
+      <link>https://example.jp/2</link>
+    </item>
+  </channel>
+</rss>

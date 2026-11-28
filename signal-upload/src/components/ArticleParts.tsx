@@ -8,7 +8,9 @@ export function SaveButton({ saved, onToggle }: { saved: boolean; onToggle: () =
     <button
       className={`icon-btn ${saved ? 'is-on' : ''}`}
       onClick={(e) => {
+        // カードのリンクを開かず、既読にもしない
         e.preventDefault();
+        e.stopPropagation();
         onToggle();
       }}
       aria-label={label}

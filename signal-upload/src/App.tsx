@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArticleCard, HeroCard, SkeletonGrid } from './components/ArticleCard';
 import { Sidebar } from './components/Sidebar';
+import { SitesPage } from './components/SitesPage';
 import { StudioCard } from './components/StudioCard';
 import { CATEGORIES, PERIODS, REGIONS } from './data/sources';
-import { STUDIOS } from './data/studios';
 import { useFeeds } from './hooks/useFeeds';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useSources } from './hooks/useSources';
+import { useStudios } from './hooks/useStudios';
+import { useSync } from './hooks/useSync';
 import type { Article, CategoryId, Lang } from './types';
 
 const PAGE_SIZE = 24;
@@ -16,7 +19,13 @@ type View = 'feed' | 'saved';
 type PeriodId = (typeof PERIODS)[number]['id'];
 
 export function App() {
-  const { articles, status, loading, updatedAt, now, reload } = useFeeds();
+  const sourcesApi = useSources();
+  const { sources } = sourcesApi;
+  const studiosApi = useStudios();
+  const allStudios = studiosApi.studios;
+  const sync = useSync(sourcesApi, studiosApi);
+  const { articles, status, loading, updatedAt, now, reload } = useFeeds(sources);
+  const page = useHashPage();
   const [storedCategory, setCategory] = useLocalStorage<CategoryId>('cat', 'all');
   const category = CATEGORIES.some((c) => c.id === storedCategory) ? storedCategory : 'all';
   const [period, setPeriod] = useLocalStorage<PeriodId>('period', 'all');
@@ -63,7 +72,7 @@ export function App() {
     return base.filter(
       (a) =>
         !(
-          (category !== 'all' && a.category !== category) ||
+          (category !== 'all' && category !== 'studios' && a.category !== category) ||
           (region !== 'all' && (a.lang || 'en') !== region) ||
           (view === 'feed' && hiddenSources.includes(a.sourceId)) ||
           (view === 'feed' &&
@@ -78,7 +87,7 @@ export function App() {
 
   const studios = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return STUDIOS.filter(
+    return allStudios.filter(
       (s) =>
         !(
           (region !== 'all' && s.lang !== region) ||
@@ -88,7 +97,7 @@ export function App() {
               .includes(q))
         ),
     );
-  }, [region, query]);
+  }, [allStudios, region, query]);
 
   // フィード表示で検索していないときは、画像のある最新記事を大きく出す
   const hero = view === 'feed' && !query ? filtered.find((a) => a.image) : undefined;
@@ -121,7 +130,7 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
+        <a className="brand" href="#/">
           <span className="logo" aria-hidden="true">
             ◐
           </span>
@@ -129,23 +138,33 @@ export function App() {
             <h1 translate="no">Signal</h1>
             <span className="tagline">世界のAI×デザイン・開発、UI/UX、ブランディング</span>
           </div>
-        </div>
-        <div className="search">
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path d="M20 20l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            placeholder="キーワードで検索"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setLimit(PAGE_SIZE);
-            }}
-          />
-        </div>
+        </a>
+        {page === 'feed' && (
+          <div className="search">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M20 20l-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              type="search"
+              placeholder="キーワードで検索"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLimit(PAGE_SIZE);
+              }}
+            />
+          </div>
+        )}
         <div className="top-actions">
+          <a
+            className={`ghost-btn ${page === 'sites' ? 'is-current' : ''}`}
+            href="#/sites"
+            title="サイトの追加・削除"
+          >
+            <span aria-hidden="true">⊕</span>
+            <span className="hide-sm">サイト</span>
+          </a>
           <button className="ghost-btn" onClick={reload} disabled={loading} title="再読み込み">
             <span className={loading ? 'spin' : ''}>↻</span>
             <span className="hide-sm">{loading ? '取得中…' : '更新'}</span>
@@ -162,130 +181,166 @@ export function App() {
         </div>
       </header>
 
-      <nav className="subnav">
-        <div className="tabs" role="tablist" ref={tabsRef}>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              role="tab"
-              aria-selected={category === c.id}
-              className={`tab ${category === c.id ? 'is-active' : ''}`}
-              onClick={() => {
-                setCategory(c.id);
-                setLimit(PAGE_SIZE);
-              }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="view-switch">
-          <button className={view === 'feed' ? 'is-active' : ''} onClick={() => setView('feed')}>
-            フィード
-          </button>
-          <button className={view === 'saved' ? 'is-active' : ''} onClick={() => setView('saved')}>
-            あとで読む
-            {savedCount > 0 && <span className="badge">{savedCount}</span>}
-          </button>
-        </div>
-      </nav>
-
-      <div className="layout">
-        <main>
-          {view === 'feed' && (
-            <div className="toolbar">
-              {showStudios ? (
-                <div className="stats">
-                  <strong>{studios.length}</strong> 社
-                  <span className="muted"> / 世界のブランディング・デザイン会社</span>
-                </div>
-              ) : (
-                <div className="stats">
-                  <strong>{filtered.length}</strong> 件
-                  <span className="muted">
-                    {' '}
-                    / 24時間以内 {last24h} 件
-                    {updatedAt &&
-                      ` · ${updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} 更新`}
-                  </span>
-                </div>
-              )}
-              <div className="filters">
-                <div className="segmented" aria-label="地域">
-                  {REGIONS.map((r) => (
-                    <button
-                      key={r.id}
-                      className={region === r.id ? 'is-active' : ''}
-                      onClick={() => {
-                        setRegion(r.id);
-                        setLimit(PAGE_SIZE);
-                      }}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-                {!showStudios && (
-                  <div className="segmented" aria-label="期間">
-                    {PERIODS.map((p) => (
-                      <button
-                        key={p.id}
-                        className={period === p.id ? 'is-active' : ''}
-                        onClick={() => setPeriod(p.id)}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {showStudios ? (
-            studios.length === 0 ? (
-              <div className="empty">条件に合う会社がありません。</div>
-            ) : (
-              <div className="grid">
-                {studios.map((s) => (
-                  <StudioCard key={s.url} studio={s} />
-                ))}
-              </div>
-            )
-          ) : articles.length === 0 && loading && view === 'feed' ? (
-            <SkeletonGrid />
-          ) : filtered.length === 0 ? (
-            <div className="empty">
-              {view === 'saved'
-                ? '保存した記事はまだありません。気になる記事のしおりアイコンを押すと、ここに集まります。'
-                : '条件に合う記事がありません。フィルタや期間を変えてみてください。'}
-            </div>
-          ) : (
-            <>
-              {hero && <HeroCard {...cardProps(hero)} />}
-              <div className="grid">
-                {visible.map((a) => (
-                  <ArticleCard key={a.id} {...cardProps(a)} />
-                ))}
-              </div>
-              {rest.length > limit && (
-                <button className="more-btn" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
-                  さらに表示({rest.length - limit} 件)
-                </button>
-              )}
-            </>
-          )}
-        </main>
-
-        <Sidebar
+      {page === 'sites' ? (
+        <SitesPage
+          api={sourcesApi}
+          studiosApi={studiosApi}
+          sync={sync}
           status={status}
           countBySource={countBySource}
-          hiddenSources={hiddenSources}
-          onToggleSource={toggleSource}
-          hasRead={Object.keys(read).length > 0}
-          onResetRead={() => setRead({})}
         />
-      </div>
+      ) : (
+        <>
+          <nav className="subnav">
+            <div className="tabs" role="tablist" ref={tabsRef}>
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  role="tab"
+                  aria-selected={category === c.id}
+                  className={`tab ${category === c.id ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setCategory(c.id);
+                    setLimit(PAGE_SIZE);
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <div className="view-switch">
+              <button
+                className={view === 'feed' ? 'is-active' : ''}
+                onClick={() => setView('feed')}
+              >
+                フィード
+              </button>
+              <button
+                className={view === 'saved' ? 'is-active' : ''}
+                onClick={() => setView('saved')}
+              >
+                あとで読む
+                {savedCount > 0 && <span className="badge">{savedCount}</span>}
+              </button>
+            </div>
+          </nav>
+
+          <div className="layout">
+            <main>
+              {view === 'feed' && (
+                <div className="toolbar">
+                  {showStudios ? (
+                    <div className="stats">
+                      <strong>{studios.length}</strong> 社
+                      <span className="muted"> / 世界のブランディング・デザイン会社</span>
+                    </div>
+                  ) : (
+                    <div className="stats">
+                      <strong>{filtered.length}</strong> 件
+                      <span className="muted">
+                        {' '}
+                        / 24時間以内 {last24h} 件
+                        {updatedAt &&
+                          ` · ${updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} 更新`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="filters">
+                    <div className="segmented" aria-label="地域">
+                      {REGIONS.map((r) => (
+                        <button
+                          key={r.id}
+                          className={region === r.id ? 'is-active' : ''}
+                          onClick={() => {
+                            setRegion(r.id);
+                            setLimit(PAGE_SIZE);
+                          }}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                    {!showStudios && (
+                      <div className="segmented" aria-label="期間">
+                        {PERIODS.map((p) => (
+                          <button
+                            key={p.id}
+                            className={period === p.id ? 'is-active' : ''}
+                            onClick={() => setPeriod(p.id)}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {showStudios ? (
+                studios.length === 0 ? (
+                  <div className="empty">条件に合う会社がありません。</div>
+                ) : (
+                  <div className="grid">
+                    {studios.map((s) => (
+                      <StudioCard key={s.url} studio={s} />
+                    ))}
+                  </div>
+                )
+              ) : articles.length === 0 && loading && view === 'feed' ? (
+                <SkeletonGrid />
+              ) : filtered.length === 0 ? (
+                <div className="empty">
+                  {view === 'saved'
+                    ? '保存した記事はまだありません。気になる記事のしおりアイコンを押すと、ここに集まります。'
+                    : '条件に合う記事がありません。フィルタや期間を変えてみてください。'}
+                </div>
+              ) : (
+                <>
+                  {hero && <HeroCard {...cardProps(hero)} />}
+                  <div className="grid">
+                    {visible.map((a) => (
+                      <ArticleCard key={a.id} {...cardProps(a)} />
+                    ))}
+                  </div>
+                  {rest.length > limit && (
+                    <button className="more-btn" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
+                      さらに表示({rest.length - limit} 件)
+                    </button>
+                  )}
+                </>
+              )}
+            </main>
+
+            <Sidebar
+              sources={sources}
+              status={status}
+              countBySource={countBySource}
+              hiddenSources={hiddenSources}
+              onToggleSource={toggleSource}
+              hasRead={Object.keys(read).length > 0}
+              onResetRead={() => setRead({})}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+type Page = 'feed' | 'sites';
+const pageFromHash = (): Page => (location.hash === '#/sites' ? 'sites' : 'feed');
+
+// サーバー側の設定なしで動くよう、ページの切り替えは URL の # で行う
+function useHashPage() {
+  const [page, setPage] = useState(pageFromHash);
+  useEffect(() => {
+    const onChange = () => {
+      setPage(pageFromHash());
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return page;
 }

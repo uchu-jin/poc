@@ -14,6 +14,8 @@ export type Source = {
   exclude?: RegExp;
   // AI に関する記事だったら、このカテゴリに振り替える
   aiCategory?: ArticleCategory;
+  // 利用者が追加したサイト。feed.php?url= で取得する
+  custom?: boolean;
 };
 
 export type Article = {
@@ -44,4 +46,6 @@ export type Studio = {
   url: string;
   lang: Lang;
   ogp: Ogp;
+  // 利用者が追加した会社
+  custom?: boolean;
 };
