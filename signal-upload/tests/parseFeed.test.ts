@@ -68,6 +68,15 @@ describe('parseFeed (Atom)', () => {
   });
 });
 
+describe('parseFeed (裸の &)', () => {
+  const items = parseFeed(fixture('bare-ampersand.xml'), uiux);
+
+  it('&amp; になっていない & があっても、それ以降の記事を落とさない', () => {
+    expect(items.map((a) => a.title)).toEqual(['First', 'Second © Q&A ©']);
+    expect(items[0]?.image).toBe('https://example.jp/a.png?fit=1999%2C1139&ssl=1');
+  });
+});
+
 describe('mergeArticles', () => {
   const article = (id: string, category: Article['category'], date: string): Article => ({
     id,

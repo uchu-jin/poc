@@ -1,7 +1,8 @@
-import { CATEGORIES, SOURCES } from '../data/sources';
-import type { FetchStatus } from '../types';
+import { CATEGORIES } from '../data/sources';
+import type { FetchStatus, Source } from '../types';
 
 type Props = {
+  sources: Source[];
   status: Record<string, FetchStatus>;
   countBySource: Record<string, number>;
   hiddenSources: string[];
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function Sidebar({
+  sources,
   status,
   countBySource,
   hiddenSources,
@@ -23,29 +25,34 @@ export function Sidebar({
       <section>
         <h4>ソース</h4>
         <p className="muted small">チェックを外すとフィードから非表示になります</p>
-        {CATEGORIES.filter((c) => c.id !== 'all').map(({ id, label }) => (
+        <a className="link-btn" href="#/sites">
+          サイトを追加・削除する
+        </a>
+        {CATEGORIES.filter((c) => sources.some((s) => s.category === c.id)).map(({ id, label }) => (
           <div className="source-group" key={id}>
             <div className={`group-label tag-${id}`}>{label}</div>
-            {SOURCES.filter((s) => s.category === id).map((s) => (
-              <label className="source-row" key={s.id}>
-                <input
-                  type="checkbox"
-                  checked={!hiddenSources.includes(s.id)}
-                  onChange={() => onToggleSource(s.id)}
-                />
-                <span className="source-name" translate="no">
-                  {s.name}
-                  {s.lang === 'ja' && <span className="jp-mark">国内</span>}
-                </span>
-                <span className={`status status-${status[s.id] || 'idle'}`}>
-                  {status[s.id] === 'error'
-                    ? '取得失敗'
-                    : status[s.id] === 'loading'
-                      ? '…'
-                      : countBySource[s.id] || 0}
-                </span>
-              </label>
-            ))}
+            {sources
+              .filter((s) => s.category === id)
+              .map((s) => (
+                <label className="source-row" key={s.id}>
+                  <input
+                    type="checkbox"
+                    checked={!hiddenSources.includes(s.id)}
+                    onChange={() => onToggleSource(s.id)}
+                  />
+                  <span className="source-name" translate="no">
+                    {s.name}
+                    {s.lang === 'ja' && <span className="jp-mark">国内</span>}
+                  </span>
+                  <span className={`status status-${status[s.id] || 'idle'}`}>
+                    {status[s.id] === 'error'
+                      ? '取得失敗'
+                      : status[s.id] === 'loading'
+                        ? '…'
+                        : countBySource[s.id] || 0}
+                  </span>
+                </label>
+              ))}
           </div>
         ))}
       </section>

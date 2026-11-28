@@ -44,23 +44,34 @@ function findImage(entry: Element, html: string) {
     : firstImgSrc(html);
 }
 
-// XML パーサは HTML の名前付き文字参照(&nbsp; など)を読めないので、先に文字へ置き換える
+// XML パーサは HTML の名前付き文字参照(&nbsp; など)や、&amp; になっていない & で止まってしまう。
+// 先に文字参照を文字へ置き換え、裸の & は &amp; にする
 const XML_ENTITIES = new Set(['amp', 'lt', 'gt', 'quot', 'apos']);
 const entityCache = new Map<string, string>();
 
 function decodeHtmlEntities(xml: string) {
-  return xml.replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (ref, name: string) => {
-    if (XML_ENTITIES.has(name)) return ref;
-    if (!entityCache.has(name)) {
-      const decoded = htmlToText(ref);
-      entityCache.set(name, decoded === ref ? '' : decoded);
-    }
-    return entityCache.get(name)!;
-  });
+  return xml
+    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (ref, name: string) => {
+      if (XML_ENTITIES.has(name)) return ref;
+      if (!entityCache.has(name)) {
+        const decoded = htmlToText(ref);
+        entityCache.set(name, decoded === ref ? '' : decoded);
+      }
+      return entityCache.get(name)!;
+    })
+    .replace(/&(?![a-zA-Z][a-zA-Z0-9]*;|#[0-9]+;|#x[0-9a-fA-F]+;)/g, '&amp;');
+}
+
+const parseXml = (xml: string) =>
+  new DOMParser().parseFromString(decodeHtmlEntities(xml), 'application/xml');
+
+export function feedTitle(xml: string) {
+  const el = parseXml(xml).querySelector('channel > title, feed > title');
+  return plainText(el?.textContent || '');
 }
 
 export function parseFeed(xml: string, source: Source): Article[] {
-  const doc = new DOMParser().parseFromString(decodeHtmlEntities(xml), 'application/xml');
+  const doc = parseXml(xml);
   const isAtom = !!doc.getElementsByTagName('feed')[0] && !doc.getElementsByTagName('rss')[0];
 
   return [...doc.getElementsByTagName(isAtom ? 'entry' : 'item')]
