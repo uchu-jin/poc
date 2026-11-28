@@ -43,5 +43,12 @@ export type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 export type FailureReason = 'invalid-skeleton' | 'union-failed' | 'empty-outline';
 
 export type BuildResult =
-  | { ok: true; outline: Outline; advanceWidth: number; bounds: Bounds | null }
+  | {
+      ok: true;
+      outline: Outline;
+      advanceWidth: number;
+      bounds: Bounds | null;
+      /** 輪郭を余白に合わせて横にずらした量（ハンドルを輪郭と同じ座標に置くため。プラン a-editor） */
+      shiftX: number;
+    }
   | { ok: false; reason: FailureReason; message: string };
